@@ -28,9 +28,9 @@ app_schematic_store = dcc.Store(
         id="app-sim-schematic",
         storage_type="session",
         data=dict(
-            workloads=list(),
-            schedulers=list(),
-            actions=list()
+            workloads=dict(),
+            schedulers=dict(),
+            actions=dict()
         )
 )
 
@@ -57,4 +57,4 @@ app.layout = dbc.Container([
 if __name__ == "__main__":
     gui_debug = cutils.envvar_bool_val("ELiSE_GUI_DEBUG")
     # Start application
-    app.run(host="0.0.0.0", debug=gui_debug)
+    app.run(host="0.0.0.0", debug=True)
