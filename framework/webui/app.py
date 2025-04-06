@@ -26,7 +26,7 @@ app_session_store = dcc.Store(
 
 app_schematic_store = dcc.Store(
         id="app-sim-schematic",
-        storage_type="session",
+        storage_type="memory",
         data=dict(
             workloads=dict(),
             schedulers=dict(),
@@ -42,7 +42,7 @@ app = Dash(__name__,
            external_stylesheets=[dbc.themes.BOOTSTRAP, dbc.icons.BOOTSTRAP])
 
 # Application configuration
-app.config.suppress_callback_exceptions = True
+# app.config.suppress_callback_exceptions = True
 
 # Defining the layout
 app.layout = dbc.Container([

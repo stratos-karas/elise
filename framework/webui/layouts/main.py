@@ -5,6 +5,8 @@ from dash.exceptions import PreventUpdate
 import dash_bootstrap_components as dbc
 import dash_core_components as dcc
 
+from utils.scheduler_utils import schedulers_modal
+
 def create_schem_component(name: str, description: str = "", items: list[dbc.ListGroupItem] = list()):
     """Create an element for each schematic component
     + name: name of the component
@@ -15,7 +17,7 @@ def create_schem_component(name: str, description: str = "", items: list[dbc.Lis
     title_div = html.Div([title], id=f"tooltip-{name.lower()}-target")
     
     if description:
-        title_div.children.append(dbc.Tooltip(description, target=f"tooltip-{name.lower()}-target"))
+        title_div.children.append(dbc.Tooltip(description, delay=dict(show=1000, hide=0), target=f"tooltip-{name.lower()}-target"))
     
     btn_label = "Add " + name
     btn_id = "add-" + name.lower()
@@ -26,20 +28,20 @@ def create_schem_component(name: str, description: str = "", items: list[dbc.Lis
         )
 
     component_id = "component-" + name.lower()
+    component_items_id = "component-" + name.lower() + "-items"
     
     # TODO: Add a button in the title div element and make the listgroup collapsable
-    return dbc.ListGroupItem([title_div, dbc.ListGroup(items)], id=component_id, action=True)
+    return dbc.ListGroupItem([title_div, dbc.ListGroup(items, id=component_items_id)], id=component_id, action=True)
     
-def create_workload_item(name, id):
+def workload_item_modal_body(data=None):
     pass
-
-def create_scheduler_item():
-    pass
+        
 
 tools = [
     create_schem_component(name="Workloads", description="Add workloads: source, heatmap, generator, cluster", items=[]),
     create_schem_component(name="Schedulers", description="Add schedulers: known or custom", items=[]),
-    create_schem_component(name="Actions", description="Add actions: preprocessing and postprocessing", items=[])
+    create_schem_component(name="Actions", description="Add actions: preprocessing and postprocessing", items=[]),
+    schedulers_modal
 ]
 tools_ctn = dbc.ListGroup(children=tools, id="tools-container", key="tools-container", style=dict(width="100%"))
 
@@ -53,54 +55,70 @@ main_layout = dbc.Container([
 
 
 component_names = ["Workloads", "Schedulers", "Actions"]
-component_ouput = [Output("component-"+name.lower(), "children") for name in component_names]
-component_ouput.append(Output("app-sim-schematic", "data"))
+component_ouput = [Output("component-"+name.lower()+"-items", "children") for name in component_names]
 
 component_input = [Input("add-"+name.lower(), "n_clicks") for name in component_names]
 
-component_state = [State("component-"+name.lower(), "children") for name in component_names]
-component_state.append(State("app-sim-schematic", "data"))
+component_state = [State("component-"+name.lower()+"-items", "children") for name in component_names]
 
 @callback(
     component_ouput,
-    component_input,
+    Input("app-sim-schematic", "data"),
     component_state
 )
-def modify_component_list(btn_workloads, btn_schedulers, btn_actions, children_workloads, children_schedulers, children_actions, app_schematic_data):
-    print(callback_context.triggered_id)
-    match callback_context.triggered_id:
-        case "add-workloads":
-            workloads_len = len(app_schematic_data["workloads"].keys())
-            workload_id = f"workload-{workloads_len - 1}"
+def modify_component_items(data, workloads_children, schedulers_children, actions_children):
+    print(data)
+    new_workloads_children = [dbc.ListGroupItem(f"workload-{idx}") for idx, _ in enumerate(data["workloads"].keys())]
+    new_workloads_children.append(workloads_children[-1])
+    new_schedulers_children = [dbc.ListGroupItem(f"scheduler-{idx}") for idx, _ in enumerate(data["schedulers"].keys())]
+    new_schedulers_children.append(schedulers_children[-1])
+    new_actions_children = [dbc.ListGroupItem(f"action-{idx}") for idx, _ in enumerate(data["actions"].keys())]
+    new_actions_children.append(actions_children[-1])
+    
+    return new_workloads_children, new_schedulers_children, new_actions_children
 
-            new_items = children_workloads[:-1]
-            new_items.append(dbc.ListGroupItem(workload_id, id=workload_id))
-            new_items.append(children_workloads[-1])
+
+
+# @callback(
+#     component_ouput,
+#     component_input,
+#     component_state
+# )
+# def modify_component_list(btn_workloads, btn_schedulers, btn_actions, children_workloads, children_schedulers, children_actions, app_schematic_data):
+#     print(callback_context.triggered_id)
+#     match callback_context.triggered_id:
+#         case "add-workloads":
+#             workloads_len = len(app_schematic_data["workloads"].keys())
+#             workload_id = f"workload-{workloads_len - 1}"
+
+#             new_items = children_workloads[:-1]
+#             new_items.append(dbc.ListGroupItem(workload_id, id=workload_id))
+#             new_items.append(children_workloads[-1])
             
-            app_schematic_data["workloads"].update({workload_id: None})
+#             app_schematic_data["workloads"].update({workload_id: None})
 
-            return new_items, children_schedulers, children_actions, app_schematic_data
-        case "add-schedulers":
-            schedulers_len = len(app_schematic_data["schedulers"].keys())
-            scheduler_id = f"workload-{schedulers_len- 1}"
+#             return new_items, children_schedulers, children_actions, app_schematic_data
+#         case "add-schedulers":
+#             schedulers_len = len(app_schematic_data["schedulers"].keys())
+#             scheduler_id = f"workload-{schedulers_len- 1}"
 
-            new_items = children_schedulers[:-1]
-            new_items.append(dbc.ListGroupItem("scheduler"))
-            new_items.append(children_schedulers[-1])
+#             new_items = children_schedulers[:-1]
+#             new_items.append(dbc.ListGroupItem("scheduler"))
+#             new_items.append(children_schedulers[-1])
             
-            app_schematic_data["schedulers"].update({scheduler_id: None})
+#             app_schematic_data["schedulers"].update({scheduler_id: None})
 
-            return children_workloads, new_items, children_actions, app_schematic_data
-        case "add-actions":
-            actions_len = len(app_schematic_data["actions"].keys())
-            action_id = f"workload-{actions_len- 1}"
+#             return children_workloads, new_items, children_actions, app_schematic_data
+#         case "add-actions":
+#             actions_len = len(app_schematic_data["actions"].keys())
+#             action_id = f"workload-{actions_len- 1}"
 
-            new_items = children_actions[:-1]
-            new_items.append(dbc.ListGroupItem("action"))
-            new_items.append(children_actions[-1])
+#             new_items = children_actions[:-1]
+#             new_items.append(dbc.ListGroupItem("action"))
+#             new_items.append(children_actions[-1])
 
-            app_schematic_data["actions"].update({action_id: None})
+#             app_schematic_data["actions"].update({action_id: None})
 
-            return children_workloads, children_schedulers, new_items, app_schematic_data
-        case _:
-            raise PreventUpdate
+#             return children_workloads, children_schedulers, new_items, app_schematic_data
+#         case _:
+#             raise PreventUpdate
