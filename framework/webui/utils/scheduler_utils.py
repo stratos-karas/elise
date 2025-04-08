@@ -20,7 +20,7 @@ app-sim-schematic::schedulers
         options list(int): list of the options enabled for the scheduler
 """
 
-def scheduler_item_modal_body(data=None):
+def scheduler_item_modal_body(data=None, index=None):
     """If data is None then new scheduler item; if data exists then modifying the scheduler
     """
     
@@ -40,7 +40,7 @@ def scheduler_item_modal_body(data=None):
                 inline=True,
                 switch=True
             ),
-            dbc.Button("Save Scheduler", id="scheduler-item-save-btn")
+            dbc.Button("Save Scheduler", id="scheduler-item-save-btn", style=dict(width="100%"))
         ])
 
     else:
@@ -62,7 +62,8 @@ def scheduler_item_modal_body(data=None):
                     inline=True,
                     switch=True
                 ),
-                dbc.Button("Save Scheduler", id="scheduler-item-save-btn")
+                dbc.Button("Save Scheduler", id="scheduler-item-save-btn", style=dict(display="none")),
+                dbc.Button("Modify scheduler", id={"modify-item": "scheduler", "index": index}, style=dict(width="100%"))
             ])
         else:
             div = html.Div([
@@ -78,7 +79,8 @@ def scheduler_item_modal_body(data=None):
                     inline=True,
                     switch=True
                 ),
-                dbc.Button("Save Scheduler", id="scheduler-item-save-btn")
+                dbc.Button("Save Scheduler", id="scheduler-item-save-btn", style=dict(display="none")),
+                dbc.Button("Modify scheduler", id={"modify-item": "scheduler", "index": index}, style=dict(width="100%"))
             ])
     
     return div
@@ -110,7 +112,7 @@ def schedulers_modal_open(n_clicks, m_clicks, data):
         return True, scheduler_item_modal_body(), None, [None] * len(m_clicks)
     else:
         idx = int(trigger_id["index"])
-        return True, scheduler_item_modal_body(data["schedulers"][f"scheduler-{idx}"]), None, [None] * len(m_clicks)
+        return True, scheduler_item_modal_body(data["schedulers"][f"scheduler-{idx}"], idx), None, [None] * len(m_clicks)
 
 @callback(
     Output("scheduler-item-select-scheduler", "style"),
@@ -151,7 +153,9 @@ def parse_uploaded_scheduler_contents(enc_contents):
 
 @callback(
     Output("app-sim-schematic", "data"),
+    Output("schedulers-modal", "is_open", allow_duplicate=True),
     Input("scheduler-item-save-btn", "n_clicks"),
+    Input({"modify-item": "scheduler", "index": ALL}, "n_clicks"),
     State("scheduler-item-select-method", "value"),
     State("scheduler-item-select-scheduler", "value"),
     State("scheduler-item-upload-scheduler", "filename"),
@@ -160,15 +164,19 @@ def parse_uploaded_scheduler_contents(enc_contents):
     State("app-sim-schematic", "data"),
     prevent_initial_call=True,
 )
-def save_scheduler_item(n_clicks, 
+def save_scheduler_item(n_clicks,
+                        m_clicks,
                         method, 
                         select_scheduler_value, 
                         upload_scheduler_value, 
                         upload_scheduler_contents, 
                         options, 
                         schematic_data):
-    if not n_clicks:
+    if not n_clicks and not any(m_clicks):
         raise PreventUpdate
+
+    modal_remains_open = True
+
     data = dict()
     data["method"] = method
     data["options"] = options
@@ -187,27 +195,38 @@ def save_scheduler_item(n_clicks,
         data["value"] = select_scheduler_value
         data["name"] = select_scheduler_value
     
-    # Find the new scheduler's id based on the already existing ids
-    stored_scheduler_ids = set(
-        [int(keyval.split('-')[1]) for keyval in schematic_data["schedulers"].keys()]
-    )
-    max_val = -1
-    if stored_scheduler_ids:
-        max_val = max(stored_scheduler_ids)
-        possible_scheduler_ids = set(range(0, max_val+1))
-        diff = possible_scheduler_ids - stored_scheduler_ids
-        # If there are unused ids inside the range of the current 0 and max then use them
-        if diff:
-            scheduler_id = diff.pop()
+    # Get the context of the callback
+    triggered_id = callback_context.triggered_id
+    print(triggered_id)
+    if triggered_id == "scheduler-item-save-btn":
+    
+        # Find the new scheduler's id based on the already existing ids
+        stored_scheduler_ids = set(
+            [int(keyval.split('-')[1]) for keyval in schematic_data["schedulers"].keys()]
+        )
+        max_val = -1
+        if stored_scheduler_ids:
+            max_val = max(stored_scheduler_ids)
+            possible_scheduler_ids = set(range(0, max_val+1))
+            diff = possible_scheduler_ids - stored_scheduler_ids
+            # If there are unused ids inside the range of the current 0 and max then use them
+            if diff:
+                scheduler_id = diff.pop()
+            else:
+                scheduler_id = max_val + 1
         else:
             scheduler_id = max_val + 1
-    else:
-        scheduler_id = max_val + 1
 
+        
+        schematic_data["schedulers"].update({f"scheduler-{scheduler_id}": data})
     
-    schematic_data["schedulers"].update({f"scheduler-{scheduler_id}": data})
+    else:
+
+        index = triggered_id["index"]
+        schematic_data["schedulers"][f"scheduler-{index}"] = data
+        modal_remains_open = False
     
-    return schematic_data
+    return schematic_data, modal_remains_open
 
 @callback(
     Output("app-sim-schematic", "data", allow_duplicate=True),
@@ -224,3 +243,4 @@ def remove_scheduler_item(n_clicks, schematic_data):
     schematic_data["schedulers"].pop(f"scheduler-{index}")
     
     return schematic_data
+    
