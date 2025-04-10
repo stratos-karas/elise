@@ -28,7 +28,7 @@ app_schematic_store = dcc.Store(
         id="app-sim-schematic",
         storage_type="memory",
         data=dict(
-            workloads=dict(),
+            inputs=dict(),
             schedulers=dict(),
             actions=dict()
         )
