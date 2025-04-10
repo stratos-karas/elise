@@ -1,8 +1,7 @@
-from dash import html, ALL
+from dash import dcc, html, ALL
 from dash import callback, callback_context, Output, Input, State
 from dash.exceptions import PreventUpdate
 import dash_bootstrap_components as dbc
-import dash_core_components as dcc
 
 import base64
 import tempfile
@@ -137,7 +136,7 @@ def scheduler_item_select_method(value):
     Input("scheduler-item-upload-scheduler", "filename"),
     prevent_initial_call=True
 )
-def scheduler_item_upload_scheduler(filename):
+def scheduler_item_upload_scheduler_notification(filename):
     return f"* Uploaded scheduler file: {filename}"
 
 
@@ -146,7 +145,7 @@ def parse_uploaded_scheduler_contents(enc_contents):
     content_type, content_string = enc_contents.split(',')
     
     if "python" not in content_type.lower():
-        return ""
+        raise Exception
 
     decoded = base64.b64decode(content_string)
     return decoded.decode('utf-8')
@@ -175,29 +174,36 @@ def save_scheduler_item(n_clicks,
     if not n_clicks and not any(m_clicks):
         raise PreventUpdate
 
+    # Get the context of the callback
+    triggered_id = callback_context.triggered_id
+    print(triggered_id)
+
     modal_remains_open = True
 
     data = dict()
     data["method"] = method
     data["options"] = options
     if method == "Custom":
-        dec_contents = parse_uploaded_scheduler_contents(upload_scheduler_contents)
-        if not dec_contents:
-            # TODO: alert the user of violations
-            raise PreventUpdate
-        filename = tempfile.mktemp(suffix=".py", prefix=upload_scheduler_value)
-        with open(filename, "w") as fd:
-            fd.write(dec_contents)
-        data["value"] = filename
-        # TODO: automatic load schedulers that are created inside the schedulers' directory
-        data["name"] = upload_scheduler_value
+        try:
+            dec_contents = parse_uploaded_scheduler_contents(upload_scheduler_contents)
+            filename = tempfile.mktemp(suffix=".py", prefix=upload_scheduler_value)
+            with open(filename, "w") as fd:
+                fd.write(dec_contents)
+            data["value"] = filename
+            # TODO: automatic load schedulers that are created inside the schedulers' directory
+            data["name"] = upload_scheduler_value
+        except:
+            if triggered_id != "scheduler-item-save-btn":
+                index = triggered_id["index"]
+                data["value"] = schematic_data["schedulers"][f"scheduler-{index}"]["value"]
+                data["name"] = schematic_data["schedulers"][f"scheduler-{index}"]["name"]
+            else:
+                raise PreventUpdate
+
     else:
         data["value"] = select_scheduler_value
         data["name"] = select_scheduler_value
     
-    # Get the context of the callback
-    triggered_id = callback_context.triggered_id
-    print(triggered_id)
     if triggered_id == "scheduler-item-save-btn":
     
         # Find the new scheduler's id based on the already existing ids
