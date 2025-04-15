@@ -4,6 +4,7 @@ from dash.exceptions import PreventUpdate
 import dash_bootstrap_components as dbc
 
 import base64
+from utils.common_utils import create_twinfile, get_session_dir
 import tempfile
 
 
@@ -87,7 +88,7 @@ def scheduler_item_modal_body(data=None, index=None):
 schedulers_modal = dbc.Modal([
     dbc.ModalHeader(dbc.ModalTitle("Schedulers")),
     dbc.ModalBody(id="schedulers-modal-body")
-], id="schedulers-modal", is_open=False)
+], id="schedulers-modal", is_open=False, size="lg", centered=True)
 
 
 @callback(
@@ -161,6 +162,7 @@ def parse_uploaded_scheduler_contents(enc_contents):
     State("scheduler-item-upload-scheduler", "contents"),
     State("scheduler-item-options", "value"),
     State("app-sim-schematic", "data"),
+    State("app-session-store", "data"),
     prevent_initial_call=True,
 )
 def save_scheduler_item(n_clicks,
@@ -170,9 +172,13 @@ def save_scheduler_item(n_clicks,
                         upload_scheduler_value, 
                         upload_scheduler_contents, 
                         options, 
-                        schematic_data):
+                        schematic_data,
+                        session_data):
     if not n_clicks and not any(m_clicks):
         raise PreventUpdate
+
+    # Get the session's working directory
+    session_dir = get_session_dir(session_data)
 
     # Get the context of the callback
     triggered_id = callback_context.triggered_id
@@ -185,10 +191,7 @@ def save_scheduler_item(n_clicks,
     data["options"] = options
     if method == "Custom":
         try:
-            dec_contents = parse_uploaded_scheduler_contents(upload_scheduler_contents)
-            filename = tempfile.mktemp(suffix=".py", prefix=upload_scheduler_value)
-            with open(filename, "w") as fd:
-                fd.write(dec_contents)
+            filename = create_twinfile(session_dir, upload_scheduler_value, upload_scheduler_contents, "python")
             data["value"] = filename
             # TODO: automatic load schedulers that are created inside the schedulers' directory
             data["name"] = upload_scheduler_value
