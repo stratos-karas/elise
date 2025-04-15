@@ -26,6 +26,24 @@ def __get_gantt_representation(self):
     os.makedirs(output_path, exist_ok=True)
     fig.write_image(f"{output_path}/workload_{self.sim_id}_{self.scheduler.name.lower().replace(' ', '_')}.png")
 
+def __get_webui_gantt_representation(self):
+    res = self.__class__.get_gantt_representation(self) # Have to call this way to avoid infinite recursion
+    output_path = os.path.abspath(f"{self.img_dir}/gantt")
+    os.makedirs(output_path, exist_ok=True)
+    filename = f"{output_path}/input_{self.sim_id}_{self.scheduler.name.lower().replace(' ', '_')}.json"
+    
+    with open(filename, "w") as fd:
+        json.dump(res, fd)
+
+def __get_webui_workload(self):
+    res = self.__class__.get_workload(self)
+
+    output_path = os.path.abspath(f"{self.workload_dir}/workload")
+    os.makedirs(output_path, exist_ok=True)
+
+    with open(f"{output_path}/workload_{self.sim_id}_{self.scheduler.name.lower().replace(' ', '_')}.csv", "w") as fd:
+        fd.write(res)
+
 def __get_workload(self):
     res = self.__class__.get_workload(self)
 
@@ -43,15 +61,20 @@ def __get_animated_cluster(self):
 def patch(evt_logger, extra_features):
     for arg, val in extra_features:
         evt_logger.__dict__[arg] = val
-    evt_logger.get_gantt_representation = MethodType(__get_gantt_representation, evt_logger)
-    evt_logger.get_workload = MethodType(__get_workload, evt_logger)
-    evt_logger.get_animated_cluster = MethodType(__get_animated_cluster, evt_logger)
+    
+    if evt_logger.webui:
+        evt_logger.get_gantt_representation = MethodType(__get_gantt_representation, evt_logger)
+        evt_logger.get_workload = MethodType(__get_webui_workload, evt_logger)
+    else:
+        evt_logger.get_gantt_representation = MethodType(__get_gantt_representation, evt_logger)
+        evt_logger.get_workload = MethodType(__get_workload, evt_logger)
+        evt_logger.get_animated_cluster = MethodType(__get_animated_cluster, evt_logger)
 
 def pad_message(msg):
     DEFAULT_MSG_LEN = 1024
     return msg + b'\0' * (DEFAULT_MSG_LEN- len(msg))
 
-def single_simulation(sim_batch, server_ipaddr, server_port):
+def single_simulation(sim_batch, server_ipaddr, server_port, webui=False):
     """The function that defines the simulation loop and actions
     """
 
@@ -108,19 +131,37 @@ def single_simulation(sim_batch, server_ipaddr, server_port):
     # Close communication socket
     sock.close()
 
+    # If executed by WebUI
+    # data = {
+    #     # Graphs
+    #     "Gantt diagram": evt_logger.get_gantt_representation(),
+    #     "Unused cores": evt_logger.get_unused_cores_graph(),
+    #     "Jobs throughput": evt_logger.get_jobs_throughput(),
+    #     "Waiting queue": evt_logger.get_waiting_queue_graph(),
+    #     ### "Resource usage": logger.get_resource_usage(),
+    #     ### "Jobs utilization": evt_logger.get_jobs_utilization(default_evt_logger),
+    #     ### "Cluster history": evt_logger.get_animated_cluster(),
+        
+    #     # Extra metrics
+    #     ## "Makespan speedup": default_cluster_makespan / cluster.makespan,
+    #     "Workload": evt_logger.get_workload()
+    # }
+
+
     # If there are actions provided for this rank
     if actions != []:
         # Overwrite event logger's interface
         extra_features.append(("sim_id", idx))
+        extra_features.append(("webui", webui))
         patch(evt_logger, extra_features)
 
         # Perform actions upon completion
         for action in actions:
             getattr(evt_logger, action)()
+    
 
-
-def multiple_simulations(sim_batches, server_ipaddr, server_port):
+def multiple_simulations(sim_batches, server_ipaddr, server_port, webui=False):
     for sim_batch in sim_batches:
         logger.debug(f"Starting single simulation with id {sim_batch[0]}")
-        single_simulation(sim_batch, server_ipaddr, server_port)
+        single_simulation(sim_batch, server_ipaddr, server_port, webui)
         logger.debug(f"Finished single simulation with id {sim_batch[0]}")
