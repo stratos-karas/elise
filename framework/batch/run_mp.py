@@ -20,11 +20,12 @@ total_procs = int(sys.argv[2])
 batch_size = int(sys.argv[3])
 server_ipaddr = sys.argv[4]
 server_port = int(sys.argv[5])
+webui = bool(int(sys.argv[6]))
 
 logger.debug(f"Creating a process pool of {total_procs} max workers")
 executor = ProcessPoolExecutor(max_workers=total_procs)
 
-multiple_simulations_partial = partial(multiple_simulations, server_ipaddr=server_ipaddr, server_port=server_port)
+multiple_simulations_partial = partial(multiple_simulations, server_ipaddr=server_ipaddr, server_port=server_port, webui=webui)
 
 for i in range(total_procs):
     logger.debug(f"Worker {i} gets {batch_size} number of simulation configurations")

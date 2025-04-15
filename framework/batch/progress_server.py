@@ -16,7 +16,11 @@ from common.utils import define_logger
 
 logger = define_logger()
 
-def progress_server(server_ipaddr="127.0.0.1", server_port=54321, connections=5, export_reports=False):
+def pad_message(msg):
+    DEFAULT_MSG_LEN = 1024
+    return msg + b'\0' * (DEFAULT_MSG_LEN - len(msg))
+
+def progress_server(server_ipaddr="127.0.0.1", server_port=54321, connections=5, export_reports="", webui=False):
 
     # Create a socket and set options for resusable ip address
     server_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -39,10 +43,21 @@ def progress_server(server_ipaddr="127.0.0.1", server_port=54321, connections=5,
     
     # Time reports list of tuples(id, scheduler name, real time, simulated time, time ratio)
     time_reports_list: list[tuple[int, str, str, str, str]] = list()
-
+    
+    if webui:
+        print("Establishing connection to WebUI")
+        webui_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        webui_socket.connect(("127.0.0.1", 55501))
+    
     while True:
 
-        print(f"\rOverall Progress: {sum(progress_list) / connections:.2f}%", end="")
+        overall_progress = sum(progress_list) / connections
+        
+        if webui:
+            webui_socket.send(pad_message(str(overall_progress).encode("utf-8")))
+        else:
+            # Stdout print of overall progress
+            print(f"\rOverall Progress: {overall_progress:.2f}%", end="")
 
         # If the remaining connections is zero and the only socket left is the
         # server then shutdown the progress server
@@ -122,7 +137,8 @@ def progress_server(server_ipaddr="127.0.0.1", server_port=54321, connections=5,
                "Simulated Time (D, HH:MM:SS)", 
                "Time Ratio (Simulated Days / 1 real hour)"]
     if export_reports:
-        with open("time_reports.csv", "w") as f:
+        os.makedirs(export_reports, exist_ok=True)
+        with open(f"{export_reports}/time_reports.csv", "w") as f:
             writer = csv.writer(f)
             writer.writerow(headers)
             for row in time_reports_list:
@@ -130,6 +146,10 @@ def progress_server(server_ipaddr="127.0.0.1", server_port=54321, connections=5,
     else:
         print()
         print(tabulate.tabulate(time_reports_list, headers=headers, tablefmt="fancy_grid"))
+    
+    # Close websocket client
+    if webui:
+        webui_socket.close()
 
     # Close the server socket
     server_sock.close()
@@ -140,7 +160,8 @@ if __name__ == "__main__":
     parser.add_argument("--server_ipaddr", type=str, required=True)
     parser.add_argument("--server_port", type=int, default=54321)
     parser.add_argument("--connections", type=int, required=True)
-    parser.add_argument("--export_reports", default=False, action="store_true")
+    parser.add_argument("--export_reports", default="", type=str, help="Provde a directory to export reports for each scheduler")
+    parser.add_argument("--webui", default=False, action="store_true")
 
     args = parser.parse_args()
 
@@ -148,5 +169,6 @@ if __name__ == "__main__":
     port = args.server_port
     connections = args.connections
     export_reports = args.export_reports
-
-    progress_server(host_ipaddr, port, connections, export_reports)
+    webui = args.webui
+    
+    progress_server(host_ipaddr, port, connections, export_reports, webui)
