@@ -4,8 +4,7 @@ from dash.exceptions import PreventUpdate
 import dash_bootstrap_components as dbc
 
 import base64
-import os
-import tempfile
+from utils.common_utils import create_twinfile, get_session_dir
 
 """
 app-sim-schematic::workloads
@@ -25,6 +24,9 @@ app-sim-schematic::workloads
 
 def display(val: bool):
     return "block" if val else "none"
+
+def display_flex(val: bool):
+    return "flex" if val else "none"
 
 def safe_value_import(data, keyword, default_value):
     try:
@@ -56,23 +58,25 @@ def logs_config_elem(data=None):
             pass
 
     logs_sources_elem = dbc.InputGroup([
-        dbc.InputGroupText("Source"),
+        dbc.InputGroupText("Source", style={"width": "30%"}),
         dbc.Select(logs_sources, logs_source, id="input-item-select-logs-source"),
     ])
     
     sources_input_elem = dbc.InputGroup([
-        dbc.InputGroupText("Source Input"),
-        dbc.Input(id="input-item-logs-database-input", value=logs_source_input, style=dict(display=display(database_input))),
+        dbc.InputGroupText("Source Input", style={"width": "30%"}),
+        dbc.Input(id="input-item-logs-database-input", value=logs_source_input, style=dict(display=display(database_input)), type="password"),
         dcc.Upload(dbc.Button("Upload File", style=dict(width="100%")), id="input-item-logs-file-input", style=dict(display=display(not database_input)))
     ])
     
     logs_machine_elem = dbc.InputGroup([
-        dbc.InputGroupText("Machine"), dbc.Input(id='input-item-logs-machine-input', value=machine)
-    ], id="input-item-logs-machine", style=dict(display=display(machinesuite_input)))
+        dbc.InputGroupText("Machine", style={"width": "30%"}),
+        dbc.Input(id='input-item-logs-machine-input', value=machine)
+    ], id="input-item-logs-machine", style=dict(display=display_flex(machinesuite_input)))
 
     logs_suite_elem = dbc.InputGroup([
-        dbc.InputGroupText("Logs' suite"), dbc.Input(id='input-item-logs-suite-input', value=suite)
-    ], id="input-item-logs-suite", style=dict(display=display(machinesuite_input)))
+        dbc.InputGroupText("Suite", style={"width": "30%"}), 
+        dbc.Input(id='input-item-logs-suite-input', value=suite)
+    ], id="input-item-logs-suite", style=dict(display=display_flex(machinesuite_input)))
     
     div = html.Div([
         html.H5("Logs configuration"),
@@ -106,7 +110,7 @@ def cb_logs_config(logs_source):
     
     res = [database_input, not database_input, machinesuite_input, machinesuite_input]
 
-    return [dict(display=display(val)) for val in res]
+    return [dict(display=display_flex(val)) for val in res]
     
 
 def heatmap_config_elem(data=None):
@@ -146,12 +150,12 @@ def workload_generation_config_elem(data=None):
             pass
     
     generators_select_elem = dbc.InputGroup([
-        dbc.InputGroupText("Generator"),
+        dbc.InputGroupText("Generator", style={"width": "30%"}),
         dbc.Select(bundled_generators, generator, id="input-item-select-jobs-generator"),
     ])
     
     generators_inputs_elem = dbc.InputGroup([
-        dbc.InputGroupText("Generator Input"),
+        dbc.InputGroupText("Generator Input", style={"width": "30%"}),
         dbc.Input(id="input-item-generator-input-value", type="number", min=1, value=generator_value, style=dict(display=display(generator_value_input))),
         dcc.Upload(dbc.Button("Upload file"), id="input-item-generator-input-file", style=dict(display=display(not generator_value_input)))
     ])
@@ -173,12 +177,12 @@ def workload_generation_config_elem(data=None):
             pass
     
     distribution_select_elem = dbc.InputGroup([
-        dbc.InputGroupText("Distribution"),
+        dbc.InputGroupText("Distribution", style={"width": "30%"}),
         dbc.Select(bundled_distributions, distribution, id="input-item-select-jobs-distribution"),
     ])
     
     distributions_inputs_elem = dbc.InputGroup([
-        dbc.InputGroupText("Distribution Input"),
+        dbc.InputGroupText("Distribution Input", style={"width": "30%"}),
         dbc.Input(id="input-item-distribution-input-value", type="number", min=1, value=distribution_value, style=dict(display=display(distribution_value_input))),
         dcc.Upload(dbc.Button("Upload file"), id="input-item-distribution-input-file", style=dict(display=display(not distribution_value_input)))
     ])
@@ -283,12 +287,12 @@ def cluster_config_elem(data=None):
     socket_conf = safe_value_import(data, "cluster-socket-conf", default_socket_conf)
     
     cluster_nodes_elem = dbc.InputGroup([
-        dbc.InputGroupText("Nodes"),
+        dbc.InputGroupText("Nodes", style={"width": "30%"}),
         dbc.Input(id="input-item-cluster-nodes", min=default_nodes, value=nodes, type="number"),
     ])
 
     cluster_socket_conf_elem = dbc.InputGroup([
-        dbc.InputGroupText("Socket configuration"),
+        dbc.InputGroupText("Socket configuration", style={"width": "30%"}),
         dbc.Input(id="input-item-cluster-socket-config", value=str(socket_conf), type="text")
     ])
     
@@ -342,7 +346,7 @@ def input_item_modal_body(data=None, index=None):
 inputs_modal = dbc.Modal([
     dbc.ModalHeader(dbc.ModalTitle("Inputs")),
     dbc.ModalBody(input_item_modal_body(), id="inputs-modal-body")
-], id="inputs-modal", is_open=True)
+], id="inputs-modal", is_open=False, size="lg", centered=True)
 
 @callback(
    Output("inputs-modal", "is_open"),
@@ -366,38 +370,6 @@ def inputs_modal_open(add_inputs_clicks, m_clicks, data):
     else:
         idx = int(trigger_id["index"])
         return True, input_item_modal_body(data["inputs"][f"input-{idx}"], idx), None, [None] * len(m_clicks)
-
-def parse_uploaded_contents(enc_contents, content_type):
-    # Decode the contents
-    content_type_str, content_string = enc_contents.split(',')
-    
-    print(content_type)
-    
-    if content_type not in content_type_str.lower():
-        raise Exception
-
-    decoded = base64.b64decode(content_string)
-    return decoded.decode('utf-8')
-
-def create_twinfile(session_dir, filename, contents, content_type):
-    # Create the session directory if it doesn't exist
-    if not os.path.isdir(session_dir):
-        os.makedirs(session_dir, exist_ok=True)
-    
-    # Create the twin file
-    ## parse contents
-    parsed_contents = parse_uploaded_contents(contents, content_type)
-
-    ## encode filename
-    name, suffix = filename.split(".")
-    enc_name = base64.b64encode(name.encode("utf-8")).decode("utf-8")
-    enc_filename = f"{session_dir}/{enc_name}.{suffix}"
-
-    # Write contents to new file under session's directory
-    with open(enc_filename, "w") as fd:
-        fd.write(parsed_contents)
-
-    return enc_filename
 
 @callback(
     Output("app-sim-schematic", "data", allow_duplicate=True),
@@ -477,9 +449,7 @@ def save_input_item(input_save_clicks,
         raise PreventUpdate
     
     # Get the session's working directory
-    sid = session_data["sid"]
-    session_stem_dir = base64.b64encode(sid.encode("utf-8")).decode("utf-8")
-    session_dir = f"/tmp/{session_stem_dir}"
+    session_dir = get_session_dir(session_data)
     
     triggered_id = callback_context.triggered_id
     print(triggered_id)
