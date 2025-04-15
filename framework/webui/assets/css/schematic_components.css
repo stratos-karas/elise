@@ -1,0 +1,17 @@
+.schematic-component-add-btn:hover {
+    color: aquamarine;
+}
+
+.schematic-component-items-list {
+    padding-left: 200;
+    width: 100%;
+    color: blue;
+}
+
+.schematic-component-inputgroup:hover {
+    /* margin: 0; */
+    background-color: red;
+    margin-left: 200;
+    padding-left: 2000;
+    /* border: none; */
+}
