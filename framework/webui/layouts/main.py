@@ -6,12 +6,12 @@ import dash_bootstrap_components as dbc
 
 from utils import schematic_utils
 from utils.input_utils import inputs_modal
-from utils.scheduler_utils import schedulers_modal
-from utils.action_utils import action_items_ctn
+from utils.scheduler_utils import schedulers_modal, schedulers_hierarchy_modal, schedulers_timer
+from utils.action_utils import action_items_ctn, actions_modal
 from utils.simulation_utils import progress_bar, app_progress_report, progress_finished
 
 # SCHEMATIC TOOL
-def schematic_component(name: str, description: str = "", items: list[dbc.ListGroupItem] = list(), add_button_enabled: bool = True):
+def schematic_component(name: str, description = None, items: list[dbc.ListGroupItem] = list(), add_button_enabled: bool = True):
     """Create an element for each schematic component
     + name: name of the component
     + description: description of the component
@@ -59,7 +59,10 @@ schematic_components = [
     schematic_component(name="Schedulers", description="Declares a schematic scheduler: known or custom", items=[]),
     schematic_component(name="Actions", description="Declares a schematic action: preprocessing and postprocessing", items=action_items_ctn, add_button_enabled=False),
     inputs_modal,
-    schedulers_modal
+    schedulers_modal,
+    schedulers_hierarchy_modal,
+    schedulers_timer,
+    actions_modal
 ]
 schematic_components_ctn = dbc.Collapse(children=dbc.Stack(schematic_components, gap=3), id="schematic-components-collapse", is_open=True, style=dict(width="100%"))
 schematic_header = dbc.Button(html.H5("Schematic", style={"alignSelf": "center", "textAlign": "left"}), size="sm", id="schematic-components-collapse-btn", style={"width": "100%"})
@@ -69,39 +72,52 @@ schematic_ctn = dbc.Stack([schematic_header, schematic_components_ctn])
 main_actions_components = [
     dbc.InputGroup([
         dbc.InputGroupText("Provider", style={"width": "30%"}),
-        dbc.Select(["MPI", "Python"], "MPI", id="main-action-provier-input")
+        dbc.Select(["MPI", "Python"], "MPI", id="main-action-multiprocessing-provider")
     ], style={"width": "100%"}),
-    dbc.Button("Export schematic", style={"width": "100%"}),
-    dbc.Button("Expand schematic", style={"width": "100%"}),
+    # dbc.Button("Export schematic", style={"width": "100%"}),
+    # dbc.Button("Expand schematic", style={"width": "100%"}),
     dbc.Button("Execute simulation", id="execute-simulation-btn", style={"width": "100%"}),
 ]
 main_actions_components_ctn = dbc.Collapse(children=dbc.Stack(main_actions_components), id="main-actions-components-collapse", is_open=True, style={"width": "100%"})
 main_actions_header = dbc.Button(html.H5("Main Actions", style={"alignSelf": "center", "textAlign": "left"}), size="sm", id="main-actions-components-collapse-btn", style={"width": "100%"})
 main_actions_ctn = dbc.Stack([main_actions_header, main_actions_components_ctn])
 
+# RESULTS TOOL
+results_components = []
+results_components_ctn = dbc.Collapse(children=dbc.Stack(results_components, id="results-component-items"), id="results-components-collapse", is_open=True, style={"width": "100%"})
+results_header = dbc.Button(html.H5("Results", style={"alignSelf": "center", "textAlign": "left"}), size="sm", id="results-components-collapse-btn", style={"width": "100%"})
+results_ctn = dbc.Stack([results_header, results_components_ctn])
+
+# FLOATING ALERTS
+floating_div = dbc.Col([app_progress_report, progress_bar, progress_finished], style={"position": "fixed", "top": "0", "zIndex": 1, "backdrop-filter": "blur(5px)", "margin": 0, "padding": 0}, md=12, lg=10)
 
 main_layout = dbc.Container([
     dbc.Row([
-        dbc.Col(dbc.Stack([main_actions_ctn, schematic_ctn], gap=1), lg=2),
-        dbc.Col([app_progress_report, progress_bar, progress_finished], id="main-canvas", width=10)
-    ])
-], fluid=True, style={"width": "100%"})
+        dbc.Col(dbc.Stack([main_actions_ctn, schematic_ctn, results_ctn], gap=1), md=12, lg=2, style={"overflowY": "scroll"}),
+        dbc.Col([floating_div, dbc.Container(id="main-canvas", fluid=True)], md=12, lg=10)
+    ], class_name="g-0")
+], fluid=True, style={"width": "100%", "height": "100vh", "margin": 0, "padding": 0})
 
 @callback(
     Output("main-actions-components-collapse", "is_open"),
     Output("schematic-components-collapse", "is_open"),
+    Output("results-components-collapse", "is_open"),
     Input("main-actions-components-collapse-btn", "n_clicks"),
     Input("schematic-components-collapse-btn", "n_clicks"),
+    Input("results-components-collapse-btn", "n_clicks"),
     State("main-actions-components-collapse", "is_open"),
     State("schematic-components-collapse", "is_open"),
+    State("results-components-collapse", "is_open"),
     prevent_initial_call=True
 )
-def handle_tool_collapses(n, m, main_actions_open, schematic_open):
+def handle_tool_collapses(n, m, l, main_actions_open, schematic_open, results_open):
     triggered_id = callback_context.triggered_id
     if triggered_id == "main-actions-components-collapse-btn":
-        return not main_actions_open, schematic_open
+        return not main_actions_open, schematic_open, results_open
     elif triggered_id == "schematic-components-collapse-btn":
-        return main_actions_open, not schematic_open
+        return main_actions_open, not schematic_open, results_open
+    elif triggered_id == "results-components-collapse-btn":
+        return main_actions_open, schematic_open, not results_open
     else:
         raise PreventUpdate
 
@@ -138,7 +154,8 @@ def handle_collapses(n,m,l, inp_open, sched_open, act_open):
             raise PreventUpdate
 
 
-component_names = ["Inputs", "Schedulers", "Actions"]
+# component_names = ["Inputs", "Schedulers", "Actions"]
+component_names = ["Inputs", "Schedulers"]
 component_ouput = [Output("component-"+name.lower()+"-items", "children") for name in component_names]
 component_input = [Input("add-"+name.lower(), "n_clicks") for name in component_names]
 component_state = [State("component-"+name.lower()+"-items", "children") for name in component_names]
@@ -159,7 +176,7 @@ def input_item_icon(case):
     Input("app-sim-schematic", "data"),
     component_state
 )
-def modify_component_items(data, inputs_children, schedulers_children, actions_children):
+def modify_component_items(data, inputs_children, schedulers_children):
 
     if not data:
         raise PreventUpdate
@@ -172,7 +189,7 @@ def modify_component_items(data, inputs_children, schedulers_children, actions_c
         child_exists = False
         
         for item in inputs_children:
-            btn = item["props"]["children"]["props"]["children"][0]
+            btn = item["props"]["children"][1]
             btn_id = btn["props"]["id"]
             btn_label = btn["props"]["children"]
 
@@ -184,15 +201,15 @@ def modify_component_items(data, inputs_children, schedulers_children, actions_c
         
         if not child_exists:
             new_inputs_children.append(
-                dbc.ListGroupItem(
-                    dbc.InputGroup([
+                # dbc.ListGroupItem(
+                    dbc.ButtonGroup([
                         html.I(className=input_item_icon(data["inputs"][key]["logs-source"]), style={"alignSelf": "center"}),
                         dbc.Button(data["inputs"][key]["name"], id=id, color="secondary", outline=True, size="sm", style={"flex": 1, "border": "none", "margin": 0, "textAlign": "left"}),
                         dbc.Button(html.I(className="bi bi-x"), id=del_id, size="sm", outline=True)
-                    ], style={"width": "100%"})
+                    ], style={"paddingLeft": "10%"}))
                 # , style=dict(margin=0, padding=0, border="none", display="flex")),
-                , style={"paddingLeft": "10%", "border": "none", "width": "100%"}),
-            )
+                # , style={"paddingLeft": "10%", "border": "none", "width": "100%"}),
+            # )
 
     
     new_schedulers_children = list()
@@ -203,7 +220,7 @@ def modify_component_items(data, inputs_children, schedulers_children, actions_c
         child_exists = False
         
         for item in schedulers_children:
-            btn = item["props"]["children"]["props"]["children"][0]
+            btn = item["props"]["children"][0]
             btn_id = btn["props"]["id"]
             btn_label = btn["props"]["children"]
 
@@ -215,20 +232,14 @@ def modify_component_items(data, inputs_children, schedulers_children, actions_c
         
         if not child_exists:
             new_schedulers_children.append(
-                dbc.ListGroupItem(
-                    dbc.InputGroup([
+                # dbc.ListGroupItem(
+                    dbc.ButtonGroup([
                         dbc.Button(data["schedulers"][key]["name"], id=id, color="secondary", outline=True, size="sm", style={"flex": 1, "border": "none", "margin": 0, "textAlign": "left"}),
                         dbc.Button(html.I(className="bi bi-x"), id=del_id, size="sm", outline=True)
-                    ], style={"width": "100%"})
-                # , style=dict(margin=0, padding=0)),
-                , style={"paddingLeft": "10%", "border": "none", "width": "100%"}),
+                    ], style={"paddingLeft": "10%"})
             )
+                # , style=dict(margin=0, padding=0)),
+                # , style={"paddingLeft": "10%", "border": "none", "width": "100%"}),
+            # )
 
-    # new_actions_children = list()
-    # for i, key in enumerate(data["actions"].keys()):
-    #     new_actions_children.append(
-    #         dbc.ListGroupItem(dbc.Button(key, id=dict(item="action", index=i), style=dict(margin=0, padding=0, width="100%")),
-    #                           style=dict(margin=0, padding=0))
-    #     )
-
-    return new_inputs_children, new_schedulers_children, actions_children
+    return new_inputs_children, new_schedulers_children

@@ -67,22 +67,27 @@ def transform_schedulers(schedulers):
     
     return batch_schedulers
 
-def transform_actions(session_data):
+
+def transform_actions(actions, session_data):
     batch_actions = dict()
-    batch_actions["get_gantt_representation"] = {
-        "workloads": "all",
-        "schedulers": "all",
-        "img_dir": f"{get_session_dir(session_data)}/results"
-    }
+    for action_name, action_args in actions.items():
+        batch_actions[action_name] = dict()
+        for arg_name, arg_value in action_args.items():
+            # Decrease the index by 1 (WebUI checklist starts counting from 1)
+            new_values = [x-1 for x in arg_value]
+            batch_actions[action_name].update({arg_name: new_values})
+        # Add results directory for each action
+        # This will be usefull to export and import results
+        batch_actions[action_name].update(dict(dir=f"{get_session_dir(session_data)}/results"))
     return batch_actions
 
 def export_schematic(schematic_data, session_data):
     batch_data = dict(
         name=schematic_data["name"],
         description=schematic_data["description"],
-        workloads=transform_inputs(schematic_data["inputs"]),
+        inputs=transform_inputs(schematic_data["inputs"]),
         schedulers=transform_schedulers(schematic_data["schedulers"]),
-        actions=transform_actions(session_data)
+        actions=transform_actions(schematic_data["actions"], session_data)
     )
     
     session_dir = get_session_dir(session_data)
