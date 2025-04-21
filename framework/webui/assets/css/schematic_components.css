@@ -1,17 +1,17 @@
-.schematic-component-add-btn:hover {
-    color: aquamarine;
+/* #layout {
+    background-color: #343434;
 }
 
-.schematic-component-items-list {
-    padding-left: 200;
-    width: 100%;
-    color: blue;
+div {
+    background-color: #545454;
+    color: white;
 }
 
-.schematic-component-inputgroup:hover {
-    /* margin: 0; */
-    background-color: red;
-    margin-left: 200;
-    padding-left: 2000;
-    /* border: none; */
+.btn-primary {
+    background-color: #141414;
+    border-color: #242424;
 }
+
+.btn-primary:hover {
+    background-color: #545454;
+} */
