@@ -34,7 +34,7 @@ if rank == 0:
     total_procs = comm.Get_size()
 
     from batch.batch_utils import BatchCreator
-    batch_creator = BatchCreator(schematic_file_path)
+    batch_creator = BatchCreator(schematic_file_path, webui)
     batch_creator.create_ranks()
 
     if total_procs > 1:
