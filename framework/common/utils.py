@@ -1,5 +1,6 @@
 from contextlib import contextmanager
 from cProfile import Profile
+import importlib.util
 import inspect
 import io
 import logging
@@ -7,6 +8,15 @@ import os
 import pstats
 import psutil
 import socket
+import sys
+
+def import_module(path):
+    mod_name = os.path.basename(path).replace(".py", "")
+    spec = importlib.util.spec_from_file_location(mod_name, path)
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return spec.name, module
 
 def get_ancestry_tree() -> list[str]:
     proc = psutil.Process()
@@ -98,7 +108,7 @@ def profiling_ctx(idx: int, scheduler: str, logger):
         os.makedirs(profiling_dir, exist_ok=True)
 
         # Filename for the log file
-        filename = f"workload_{idx}_{scheduler.lower().replace(' ', '_')}_profile.log"
+        filename = f"input_{idx}_{scheduler.lower().replace(' ', '_')}_profile.log"
 
         logger.debug("Profiling is enabled")
         profiler.enable()
