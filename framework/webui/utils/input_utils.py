@@ -64,7 +64,7 @@ def logs_config_elem(data=None):
     
     sources_input_elem = dbc.InputGroup([
         dbc.InputGroupText("Source Input", style={"width": "30%"}),
-        dbc.Input(id="input-item-logs-database-input", value=logs_source_input, style=dict(display=display(database_input)), type="password"),
+        dbc.Input(id="input-item-logs-database-input", value=logs_source_input, style={"display": display(database_input)}, className="database-input", type="text"),
         dcc.Upload(dbc.Button("Upload File", style=dict(width="100%")), id="input-item-logs-file-input", style=dict(display=display(not database_input)))
     ])
     
@@ -462,6 +462,8 @@ def save_input_item(input_save_clicks,
     # Logs configuration handling
     data["logs-source"] = logs_source
     if logs_source == "Database":
+        if not logs_database_value:
+            raise PreventUpdate
         data["logs-value"] = logs_database_value
     else:
         if triggered_id == "input-item-save-btn":

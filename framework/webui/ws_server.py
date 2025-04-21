@@ -4,6 +4,20 @@ from time import time, sleep
 import threading
 from websocket import create_connection
 
+def get_ip():
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    s.settimeout(0)
+    try:
+        # doesn't even have to be reachable
+        s.connect(('10.254.254.254', 1))
+        IP = s.getsockname()[0]
+    except Exception:
+        IP = '127.0.0.1'
+    finally:
+        s.close()
+    return IP
+
+ws_ipaddr = get_ip()
 
 def pad_message(msg):
     DEFAULT_MSG_LEN = 1024
@@ -14,7 +28,7 @@ def start_tcp_server(host="127.0.0.1", port=55501):
     # Create websocket client
     START_TIME = time()
     UPDATE_TIME = 3
-    ws_client = create_connection("ws://localhost:55500")
+    ws_client = create_connection(f"ws://{ws_ipaddr}:55500")
 
     # Create a TCP/IP socket
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -72,7 +86,7 @@ def echo(wsocket):
             except:
                 pass
 
-def websocket_server(host="localhost", port=55500):
+def websocket_server(host=ws_ipaddr, port=55500):
     with serve(echo, host, port, ping_timeout=None) as ws_server:
         ws_server.serve_forever()
 

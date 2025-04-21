@@ -12,6 +12,7 @@ sys.path.append(os.path.abspath(
 ))
 
 from common import utils as cutils
+from utils.action_utils import action_item_name, action_items_names
 
 # Store session information
 app_session_store = dcc.Store(
@@ -22,6 +23,11 @@ app_session_store = dcc.Store(
             )
         )
 
+actions_data = {
+    action_item_name(name):{"inputs": [], "schedulers": []}
+    for name in action_items_names
+}
+
 # Store schematic data
 app_schematic_store = dcc.Store(
         id="app-sim-schematic",
@@ -31,7 +37,7 @@ app_schematic_store = dcc.Store(
             description="",
             inputs=dict(),
             schedulers=dict(),
-            actions=dict()
+            actions=actions_data
         )
 )
 
@@ -42,6 +48,12 @@ app_progress_store = dcc.Store(
     data=dict(
         progress=0
     ) 
+)
+
+app_results_store = dcc.Store(
+    id="app-results-store",
+    storage_type="memory",
+    data=list()
 )
 
 # Defining the application
@@ -60,9 +72,10 @@ app.layout = dbc.Container([
     app_session_store,
     app_schematic_store,
     app_progress_store,
+    app_results_store,
     main_layout
 
-], fluid=True, class_name="mh-100", id="layout")
+], fluid=True, class_name="mh-100", style={"height": "100vh"}, id="layout")
 
 
 if __name__ == "__main__":

@@ -1,11 +1,44 @@
 from dash import dcc, html, ALL
 from dash import callback, callback_context, Output, Input, State
+from dash_extensions import Mermaid
 from dash.exceptions import PreventUpdate
 import dash_bootstrap_components as dbc
 
 import base64
 from utils.common_utils import create_twinfile, get_session_dir
-import tempfile
+
+import os
+import sys
+
+sys.path.append(os.path.abspath(os.path.join(
+    os.path.dirname(__file__), "../.."
+)))
+
+from common.hierarchy import parse_classes_from_file, build_class_hierarchy, mermaid_graph
+
+# Schedulers' timer to update the list and the mermaid graph 
+# if a new scheduler is introduced to the hierarchy
+schedulers_timer = dcc.Interval(id="schedulers-timer", interval=10000)
+
+scheduler_class_hierarchy = build_class_hierarchy(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../realsim/scheduler")))
+
+# Create mermaid graph
+schedulers_hierarchy_modal = dbc.Modal([
+    dbc.ModalHeader(dbc.ModalTitle("Schedulers' Hierarchy")),
+    dbc.ModalBody(Mermaid(id="schedulers-mermaid-graph", chart=mermaid_graph(scheduler_class_hierarchy)))
+], is_open=False, size="lg", id="schedulers-hierarchy-modal")
+
+
+# Drop abstract classes
+concrete_schedulers_hierarchy = []
+for cls_key, cls_val in scheduler_class_hierarchy.items():
+    if not cls_val["bases"]:
+        continue
+    if not cls_val["abstract"]:
+        scheduler_name = cls_val["name"]
+        if not scheduler_name:
+            scheduler_name = cls_key
+        concrete_schedulers_hierarchy.append(scheduler_name)
 
 
 """
@@ -29,7 +62,7 @@ def scheduler_item_modal_body(data=None, index=None):
 
         div = html.Div([
             dbc.InputGroup([dbc.Select(["Defaults", "Custom"], "Defaults", id="scheduler-item-select-method"), 
-                            dbc.Select(["FIFO Scheduler", "EASY Scheduler"], "FIFO Scheduler", id="scheduler-item-select-scheduler", style={"display": "block"}),
+                            dbc.Select(concrete_schedulers_hierarchy, "FIFO Scheduler", id="scheduler-item-select-scheduler", style={"display": "block"}),
                             dcc.Upload(dbc.Button("Upload file", style=dict(width="100%")), id="scheduler-item-upload-scheduler", style={"display": "none"}),
             ]),
             html.Footer(id="scheduler-item-upload-footer", className="small", style=dict(display="none")),
@@ -86,10 +119,48 @@ def scheduler_item_modal_body(data=None, index=None):
     return div
  
 schedulers_modal = dbc.Modal([
-    dbc.ModalHeader(dbc.ModalTitle("Schedulers")),
+    dbc.ModalHeader([
+        dbc.ModalTitle("Schedulers"),
+        dbc.Button(html.I(className="bi bi-diagram-3"), outline=True, id="schedulers-hierarchy-btn", class_name="ml-auto")
+    ], class_name="d-flex"),
     dbc.ModalBody(id="schedulers-modal-body")
 ], id="schedulers-modal", is_open=False, size="lg", centered=True)
 
+@callback(
+    Output("schedulers-hierarchy-modal", "is_open"),
+    Input("schedulers-hierarchy-btn", "n_clicks"),
+    prevent_initial_call=True
+)
+def open_schedulers_hierarchy(n_clicks):
+    return True
+
+@callback(
+    Output("scheduler-item-select-scheduler", "options"),
+    Output("schedulers-mermaid-graph", "chart"),
+    Input("schedulers-timer", "n_intervals"),
+    State("scheduler-item-select-scheduler", "options"),
+    prevent_initial_call=True
+)
+def update_schedulers(n_intervals, options):
+    print("Inside timer")
+    scheduler_class_hierarchy = build_class_hierarchy(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../realsim/scheduler")))
+    concrete_schedulers_hierarchy = []
+    for cls_key, cls_val in scheduler_class_hierarchy.items():
+        if not cls_val["bases"]:
+            continue
+        if not cls_val["abstract"]:
+            scheduler_name = cls_val["name"]
+            if not scheduler_name:
+                scheduler_name = cls_key
+            concrete_schedulers_hierarchy.append(scheduler_name)
+    
+    if set(concrete_schedulers_hierarchy) == set(options):
+        raise PreventUpdate
+    
+    print(concrete_schedulers_hierarchy)
+    
+    return concrete_schedulers_hierarchy, mermaid_graph(scheduler_class_hierarchy)
+     
 
 @callback(
    Output("schedulers-modal", "is_open"),
@@ -194,7 +265,16 @@ def save_scheduler_item(n_clicks,
             filename = create_twinfile(session_dir, upload_scheduler_value, upload_scheduler_contents, "python")
             data["value"] = filename
             # TODO: automatic load schedulers that are created inside the schedulers' directory
-            data["name"] = upload_scheduler_value
+            defined_classes = parse_classes_from_file(filename)
+            scheduler_key = list(defined_classes.keys())[0]
+            is_abstract = defined_classes[scheduler_key]["abstract"]
+            if is_abstract:
+                raise PreventUpdate
+            
+            scheduler_name = defined_classes[scheduler_key]["name"]
+            if not scheduler_name:
+                scheduler_name = scheduler_key
+            data["name"] = scheduler_name
         except:
             if triggered_id != "scheduler-item-save-btn":
                 index = triggered_id["index"]
