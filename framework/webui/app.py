@@ -60,8 +60,7 @@ app_results_store = dcc.Store(
 app = DashProxy(__name__,
                 compress=True,
                 meta_tags=[{"name": "viewport", "content": "width=device-width, initial-scale=1"}],
-                external_stylesheets=[dbc.themes.BOOTSTRAP, dbc.icons.BOOTSTRAP, "assets/css/schematic_components.css"])
-
+                external_stylesheets=["assets/css/bootstrap.min.css", "assets/css/bootstrap-icons.css", "assets/css/schematic_components.css"])
 
 # Application configuration
 # app.config.suppress_callback_exceptions = True
@@ -77,6 +76,8 @@ app.layout = dbc.Container([
 
 ], fluid=True, class_name="mh-100", style={"height": "100vh"}, id="layout")
 
+app.title = "ELiSE"
+app.config.update_title = None
 
 if __name__ == "__main__":
     gui_debug = cutils.envvar_bool_val("ELiSE_GUI_DEBUG")

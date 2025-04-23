@@ -1,8 +1,47 @@
-/* #layout {
-    background-color: #343434;
+#layout {
+    background-color: #141414;
+    color: white;
 }
 
-div {
+.toolarea {
+    background-color: #111111;
+    color: white;
+}
+
+.workarea {
+    background-color: #141414;
+    color: white;
+}
+
+.btn-primary {
+    background-color: #218adf;
+}
+
+.dash-table-tooltip {
+    background-color: black !important;
+}
+/* .input-group-text {
+    background-color: #141414;
+    border-color: #313131;
+    color: white;
+}
+
+.input-group {
+    border-color: #313131;
+}
+
+.form-select {
+    background-color: #313131;
+    border-color: #313131;
+    color: white;
+}
+
+.form-check-input{
+    background-color: #141414;
+    border-color: white;
+    color: white;
+} */
+/* div {
     background-color: #545454;
     color: white;
 }
