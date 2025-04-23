@@ -569,6 +569,22 @@ def remove_input_item(n_clicks, schematic_data):
     
     triggered_id = callback_context.triggered_id
     index = triggered_id["index"]
+
+    # Find the index of the input's id and return the option value (= inputId + 1)
+    value = list(schematic_data["inputs"].keys()).index(f"input-{index}") + 1
+
+    # For each action remove the option and update the larger options
+    for action_val in schematic_data["actions"].values():
+        new_inputs_options = []
+        for opt_val in action_val["inputs"]:
+            if opt_val < value:
+                new_inputs_options.append(opt_val)
+            elif opt_val > value:
+                new_inputs_options.append(opt_val - 1)
+            else:
+                continue
+        action_val["inputs"] = new_inputs_options
+
     schematic_data["inputs"].pop(f"input-{index}")
     
     return schematic_data

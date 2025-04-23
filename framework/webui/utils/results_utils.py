@@ -29,7 +29,7 @@ def files_in_directory(path: str):
     else:
         return []
 
-def fork_results(action_args, path: str):
+def fork_results(inputs_ids, schedulers_ids, action_args, path: str):
     
     res = dict()
 
@@ -46,9 +46,11 @@ def fork_results(action_args, path: str):
     files = os.listdir(path)
 
     for inp_idx in inputs:
+        webui_input_id = inputs_ids[inp_idx-1]
         input_key = f"input-{inp_idx-1}"
         res[input_key] = dict()
         for sched_idx in schedulers:
+            webui_scheduler_id = schedulers_ids[sched_idx - 1]
             scheduler_key = f"scheduler-{sched_idx-1}"
             file_prefix = f"input_{inp_idx-1}_scheduler_{sched_idx-1}."
 
@@ -62,9 +64,11 @@ def fork_results(action_args, path: str):
                 pass
             
             print(input_key, scheduler_key)
-            res[input_key][scheduler_key] = import_results(f"{path}/{filename}")
+            # res[input_key][scheduler_key] = import_results(f"{path}/{filename}")
+            res[webui_input_id][webui_scheduler_id] = import_results(f"{path}/{filename}")
 
-        res[input_key] = {key: res[input_key][key] for key in sorted(res[input_key])}
+        # res[input_key] = {key: res[input_key][key] for key in sorted(res[input_key])}
+        res[webui_input_id] = {key: res[webui_input_id][key] for key in sorted(res[webui_input_id])}
     
     return res
 
@@ -79,7 +83,9 @@ def get_experiment_results(schematic_data, session_data):
 
     def conditional_action(action: str, out_dir: str):
         if action in schematic_data["actions"]:
-            fork_res = fork_results(schematic_data["actions"][action], f"{results_dir}/{out_dir}")
+            inputs_ids = list(schematic_data["inputs"].keys())
+            schedulers_ids = list(schematic_data["schedulers"].keys())
+            fork_res = fork_results(inputs_ids, schedulers_ids, schematic_data["actions"][action], f"{results_dir}/{out_dir}")
             if fork_res:
                 results[action] = fork_res
 
@@ -269,7 +275,8 @@ def draw_canvas_general_diagram(n_clicks, results_data, schematic_data):
     fig["layout"]["xaxis"]["tickvals"] = xaxis_tickvals
     fig["layout"]["xaxis"]["ticktext"] = xaxis_ticktext
 
-    return dcc.Graph(figure=fig, style={"height": "100vh"})
+    fig["layout"]["template"] = "plotly_dark"
+    return dcc.Graph(figure=fig, style={"height": "100vh"}, config={"staticPlot": True})
     
 
 @callback(
@@ -323,7 +330,7 @@ def draw_canvas_scheduler(n_clicks, results_data, schematic_data):
                     values = []
                     for other_sched_id, other_tdata in others.items():
                         values.append(f"{schematic_data["schedulers"][other_sched_id]["name"]}: {other_tdata[i][key]}")
-                    row_dict[key] = "\n".join(values)
+                    row_dict[key] = "".join(values)
                 tooltip.append(row_dict)
             
             
@@ -338,9 +345,16 @@ def draw_canvas_scheduler(n_clicks, results_data, schematic_data):
             
             return dash_table.DataTable(data=table_data, 
                                         columns=create_columns(), 
-                                        style_table={"height": "100vh", "overflowY": "scroll"},
-                                        style_header={"whiteSpace": "normal", "height": "auto", "fontWeight": "bold", "textAlign": "center", "position": "sticky", "top": 0},
-                                        style_cell={"textAlign": "center"},
+                                        style_table={"height": "100vh", "overflowY": "scroll", "whiteSpace": "pre-line"},
+                                        style_header={"backgroundColor": "#111111", "color": "white", "whiteSpace": "normal", "height": "auto", "fontWeight": "bold", "textAlign": "center", "position": "sticky", "top": 0},
+                                        style_cell={"backgroundColor": "#141414", "color": "#bbbbbb","textAlign": "center"},
+                                        style_data_conditional=[
+                                            {
+                                                "if": {"column_id": "Job Number"},
+                                                "color": "orange"
+                                            }
+                                        ],
+                                        # style_data={"backgroundColor": "black", "color": "white"},
                                         tooltip_data=tooltip,
                                         tooltip_delay=1000,
                                         tooltip_duration=None)
@@ -348,6 +362,9 @@ def draw_canvas_scheduler(n_clicks, results_data, schematic_data):
         case _:
             # For Plotly graphs
             data = json.loads(result)
-            diagram = from_json(data)
-            print(type(diagram))
-            return dcc.Graph(figure=diagram, style={"height": "100vh"})
+            fig = from_json(data)
+            fig["layout"]["template"] = "plotly_dark"
+            fig["layout"]["plot_bgcolor"] = "#f2f2f2"
+            fig.update_xaxes(linecolor="white", mirror=True, gridcolor="lightgray", gridwidth=2)
+            fig.update_yaxes(linecolor="white", mirror=True, gridcolor="lightgray", gridwidth=2)
+            return dcc.Graph(figure=fig, style={"height": "100vh"}, config={"staticPlot": True})

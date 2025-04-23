@@ -101,7 +101,7 @@ def scheduler_item_modal_body(data=None, index=None):
         else:
             div = html.Div([
                 dbc.InputGroup([dbc.Select(["Defaults", "Custom"], "Defaults", id="scheduler-item-select-method"), 
-                                dbc.Select(["FIFO Scheduler", "EASY Scheduler"], value, id="scheduler-item-select-scheduler", style={"display": "block"}),
+                                dbc.Select(concrete_schedulers_hierarchy, value, id="scheduler-item-select-scheduler", style={"display": "block"}),
                                 dcc.Upload(dbc.Button("Upload file", style=dict(width="100%")), id="scheduler-item-upload-scheduler", style={"display": "none"}),
                 ]),
                 html.Footer(id="scheduler-item-upload-footer", className="small", style=dict(display="none")),
@@ -329,6 +329,23 @@ def remove_scheduler_item(n_clicks, schematic_data):
     
     triggered_id = callback_context.triggered_id
     index = triggered_id["index"]
+    
+    # Find the index of the scheduler's id and return the option value (= schedulerId + 1)
+    value = list(schematic_data["schedulers"].keys()).index(f"scheduler-{index}") + 1
+    print(value, schematic_data["schedulers"].keys())
+
+    # For each action remove the option and update the larger options
+    for action_val in schematic_data["actions"].values():
+        new_schedulers_options = []
+        for opt_val in action_val["schedulers"]:
+            if opt_val < value:
+                new_schedulers_options.append(opt_val)
+            elif opt_val > value:
+                new_schedulers_options.append(opt_val - 1)
+            else:
+                continue
+        action_val["schedulers"] = new_schedulers_options
+
     schematic_data["schedulers"].pop(f"scheduler-{index}")
     
     return schematic_data
