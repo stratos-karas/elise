@@ -49,7 +49,7 @@ from realsim.generators.distribution.poissondistr import PoissonDistribution
 from realsim.cluster.cluster import Cluster
 
 # Schedulers
-# from realsim.scheduler.scheduler import Scheduler
+from realsim.scheduler.scheduler import Scheduler
 # from realsim.scheduler.schedulers.fifo import FIFOScheduler
 # from realsim.scheduler.schedulers.easy import EASYScheduler
 # from realsim.scheduler.schedulers.conservative import ConservativeScheduler
