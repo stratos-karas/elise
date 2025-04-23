@@ -1,5 +1,5 @@
 import dash_bootstrap_components as dbc
-from dash_extensions.enrich import State, Input, Output, dcc, html, callback, ALL, callback_context
+from dash_extensions.enrich import State, Input, Output, dcc, html, callback, ALL, callback_context, MATCH
 from dash.exceptions import PreventUpdate
 
 def display(val: bool):
@@ -32,10 +32,14 @@ action_items_ctn = dbc.Stack(action_items)
 
 
 def action_modal_get_content(name, data, index):
-    header = html.H5(name)
-    checklist_id = f"action-{index}-{name.lower()}-checklist"
+    title = html.H5(name, style={"flex": 1})
+    # select_all = dbc.Switch(id={"action": "select-all", "index": index, "type": f"{name.lower()}"}, style={"flex": 0})
+    select_all = dbc.Switch(id={"action-type": index, "check-input": f"{name.lower()}", "type": "select-all"}, style={"flex": 0})
+    header = dbc.Row([title, select_all])
+    #checklist_id = f"action-{index}-{name.lower()}-checklist"
+    checklist_id = {"action-type": index, "check-input": f"{name.lower()}", "type": "checklist"}
     checklist = dbc.Checklist(
-        options=[{"label": name, "value": i+1} for i, name in enumerate(data[name.lower()].keys())],
+        options=[{"label": f"{name.lower()}-{i}", "value": i+1} for i in range(len(data[name.lower()]))],
         value=data["actions"][index][name.lower()],
         inline=True,
         id=checklist_id
@@ -108,29 +112,30 @@ def actions_modal_open(n_clicks, schematic_data):
         case _:
             raise PreventUpdate
 
+    
 @callback(
     Output("app-sim-schematic", "data", allow_duplicate=True),
     Output("actions-modal", "is_open", allow_duplicate=True),
 
     Input({"modify-item": "action", "index": ALL}, "n_clicks"),
 
-    State("action-get-workloads-inputs-checklist", "value"),
-    State("action-get-workloads-schedulers-checklist", "value"),
+    State({"action-type": "get-workloads", "check-input": "inputs", "type": "checklist"}, "value"),
+    State({"action-type": "get-workloads", "check-input": "schedulers", "type":  "checklist"}, "value"),
 
-    State("action-get-gantt-diagrams-inputs-checklist", "value"),
-    State("action-get-gantt-diagrams-schedulers-checklist", "value"),
+    State({"action-type": "get-gantt-diagrams", "check-input": "inputs", "type": "checklist"}, "value"),
+    State({"action-type": "get-gantt-diagrams", "check-input": "schedulers", "type": "checklist"}, "value"),
 
-    State("action-get-waiting-queue-diagrams-inputs-checklist", "value"),
-    State("action-get-waiting-queue-diagrams-schedulers-checklist", "value"),
+    State({"action-type": "get-waiting-queue-diagrams", "check-input": "inputs", "type": "checklist"}, "value"),
+    State({"action-type": "get-waiting-queue-diagrams", "check-input": "schedulers", "type": "checklist"}, "value"),
 
-    State("action-get-jobs-throughput-diagrams-inputs-checklist", "value"),
-    State("action-get-jobs-throughput-diagrams-schedulers-checklist", "value"),
+    State({"action-type": "get-jobs-throughput-diagrams", "check-input": "inputs", "type": "checklist"}, "value"),
+    State({"action-type": "get-jobs-throughput-diagrams", "check-input": "schedulers", "type": "checklist"}, "value"),
 
-    State("action-get-unused-cores-diagrams-inputs-checklist", "value"),
-    State("action-get-unused-cores-diagrams-schedulers-checklist", "value"),
+    State({"action-type": "get-unused-cores-diagrams", "check-input": "inputs", "type": "checklist"}, "value"),
+    State({"action-type": "get-unused-cores-diagrams", "check-input": "schedulers", "type": "checklist"}, "value"),
 
-    State("action-get-animated-clusters-inputs-checklist", "value"),
-    State("action-get-animated-clusters-schedulers-checklist", "value"),
+    State({"action-type": "get-animated-clusters", "check-input": "inputs", "type": "checklist"}, "value"),
+    State({"action-type": "get-animated-clusters", "check-input": "schedulers", "type": "checklist"}, "value"),
     
     State("app-sim-schematic", "data"),
 
@@ -187,6 +192,21 @@ def cb_modify_action(n_clicks,
     
     return schematic_data, False
 
+@callback(
+    Output({"action-type": MATCH, "check-input": MATCH, "type": "checklist"}, "value"),
+    Input({"action-type": MATCH, "check-input": MATCH, "type": "select-all"}, "value"),
+    State({"action-type": MATCH, "check-input": MATCH, "type": "checklist"}, "options"),
+    prevent_initial_call=True
+)
+def cb_select_all_checkboxes(value, options):
+    print("Inside action switch")
+    triggered_id = callback_context.triggered_id
+    check_input = triggered_id["check-input"]
+    # raise PreventUpdate
+    if value:
+        return [x+1 for x in range(len(options))]
+    return []
+    
 # @callback(
 #     Output("app-sim-schematic", "data", allow_duplicate=True),
 #     Input({"check-item": "action", "index": ALL}, "value"),
