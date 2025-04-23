@@ -91,11 +91,17 @@ results_ctn = dbc.Stack([results_header, results_components_ctn])
 # FLOATING ALERTS
 floating_div = dbc.Col([app_progress_report, progress_bar, progress_finished], style={"position": "fixed", "top": "0", "zIndex": 1, "backdrop-filter": "blur(5px)", "margin": 0, "padding": 0}, md=12, lg=10)
 
+# ELiSE Logo
+elise_logo = html.Div(
+    html.Img(src="assets/imgs/elise-logo-horizontal.png", style={"width": "100%", "height": "auto"})
+    , style={"flex": 1}
+)
+
 main_layout = dbc.Container([
     dbc.Row([
-        dbc.Col(dbc.Stack([main_actions_ctn, schematic_ctn, results_ctn], gap=1), md=12, lg=2, style={"overflowY": "scroll"}),
-        dbc.Col([floating_div, dbc.Container(id="main-canvas", fluid=True)], md=12, lg=10)
-    ], class_name="g-0")
+        dbc.Col(dbc.Stack([elise_logo, main_actions_ctn, schematic_ctn, results_ctn], gap=1), md=12, lg=2, class_name="toolarea", style={"overflowY": "scroll"}),
+        dbc.Col([floating_div, dbc.Spinner(dbc.Container(id="main-canvas", fluid=True))], md=12, lg=10, class_name="workarea")
+    ], class_name="g-0", style={"height": "100vh"})
 ], fluid=True, style={"width": "100%", "height": "100vh", "margin": 0, "padding": 0})
 
 @callback(
@@ -205,8 +211,8 @@ def modify_component_items(data, inputs_children, schedulers_children):
                     dbc.ButtonGroup([
                         html.I(className=input_item_icon(data["inputs"][key]["logs-source"]), style={"alignSelf": "center"}),
                         dbc.Button(data["inputs"][key]["name"], id=id, color="secondary", outline=True, size="sm", style={"flex": 1, "border": "none", "margin": 0, "textAlign": "left"}),
-                        dbc.Button(html.I(className="bi bi-x"), id=del_id, size="sm", outline=True)
-                    ], style={"paddingLeft": "10%"}))
+                        dbc.Button(html.I(className="bi bi-x"), id=del_id, size="sm", outline=True, style={"flex": 0})
+                    ], style={"paddingLeft": "10%"}, class_name="d-flex"))
                 # , style=dict(margin=0, padding=0, border="none", display="flex")),
                 # , style={"paddingLeft": "10%", "border": "none", "width": "100%"}),
             # )
@@ -235,7 +241,7 @@ def modify_component_items(data, inputs_children, schedulers_children):
                 # dbc.ListGroupItem(
                     dbc.ButtonGroup([
                         dbc.Button(data["schedulers"][key]["name"], id=id, color="secondary", outline=True, size="sm", style={"flex": 1, "border": "none", "margin": 0, "textAlign": "left"}),
-                        dbc.Button(html.I(className="bi bi-x"), id=del_id, size="sm", outline=True)
+                        dbc.Button(html.I(className="bi bi-x"), id=del_id, size="sm", outline=True, style={"flex": 0})
                     ], style={"paddingLeft": "10%"})
             )
                 # , style=dict(margin=0, padding=0)),
