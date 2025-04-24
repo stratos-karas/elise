@@ -347,9 +347,12 @@ def draw_canvas_scheduler(n_clicks, results_data, schematic_data):
             # Create tooltips from the other schedulers
             others = dict()
             for other_sched_id in schematic_data["schedulers"].keys():
-                if other_sched_id != sched_id:
-                    _, other_tdata = create_table(results_data[exp_id][action][input_id][other_sched_id])
-                    others[other_sched_id] = other_tdata
+                try:
+                    if other_sched_id != sched_id:
+                        _, other_tdata = create_table(results_data[exp_id][action][input_id][other_sched_id])
+                        others[other_sched_id] = other_tdata
+                except:
+                    pass
             
             tooltip = []
             for i, row in enumerate(table_data):
