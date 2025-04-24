@@ -23,12 +23,6 @@ def import_results(path: str):
             contents = fd.read()
     return contents
             
-def files_in_directory(path: str):
-    if os.path.isdir(path):
-        return os.listdir(path)
-    else:
-        return []
-
 def fork_results(inputs_ids, schedulers_ids, action_args, path: str):
     
     res = dict()
@@ -51,7 +45,6 @@ def fork_results(inputs_ids, schedulers_ids, action_args, path: str):
         res[input_key] = dict()
         for sched_idx in schedulers:
             webui_scheduler_id = schedulers_ids[sched_idx - 1]
-            scheduler_key = f"scheduler-{sched_idx-1}"
             file_prefix = f"input_{inp_idx-1}_scheduler_{sched_idx-1}."
 
             filename = ""
@@ -63,11 +56,8 @@ def fork_results(inputs_ids, schedulers_ids, action_args, path: str):
             if not filename:
                 pass
             
-            print(input_key, scheduler_key)
-            # res[input_key][scheduler_key] = import_results(f"{path}/{filename}")
             res[webui_input_id][webui_scheduler_id] = import_results(f"{path}/{filename}")
 
-        # res[input_key] = {key: res[input_key][key] for key in sorted(res[input_key])}
         res[webui_input_id] = {key: res[webui_input_id][key] for key in sorted(res[webui_input_id])}
     
     return res
@@ -132,6 +122,15 @@ def is_general_diagram(action: str):
             return False
         case _:
             return True
+
+def create_table(input):
+    data = input.split("\n")
+    table_data = [] 
+    head = data[0].strip().split(",")
+    for line in data[1:]:
+        values = line.strip().split(",")
+        table_data.append(dict(zip(head, values)))
+    return head, table_data
 
 
 @callback(
@@ -213,6 +212,43 @@ def experiment_input_collapses(n_clicks, is_open):
 
 @callback(
     Output("main-canvas", "children", allow_duplicate=True),
+    Input({"experiment": ALL, "action": "time-reports"}, "n_clicks"),
+    State("app-results-store", "data"),
+    prevent_initial_call=True
+)
+def draw_report_table(n_clicks, results_data):
+    if not any(n_clicks):
+        raise PreventUpdate
+    
+    triggered_id = callback_context.triggered_id
+    exp_id = int(triggered_id["experiment"])
+    time_reports = results_data[exp_id]["time-reports"]
+    
+    # Create table data and header
+    head, table_data = create_table(time_reports)
+
+    # Create columns
+    columns = list()
+    for head_col in head:
+        columns.append({"name": head_col, "id": head_col})
+    
+    return dash_table.DataTable(
+        data=table_data, 
+        columns=columns,
+        style_table={"height": "100vh", "overflowY": "scroll", "whiteSpace": "pre-line"},
+        style_header={"backgroundColor": "#111111", "color": "white", "whiteSpace": "normal", "height": "auto", "fontWeight": "bold", "textAlign": "center", "position": "sticky", "top": 0},
+        style_cell={"backgroundColor": "#141414", "color": "#bbbbbb","textAlign": "center"},
+        style_data_conditional=[
+            {
+                "if": {"column_id": "Simulation ID"},
+                "color": "orange"
+            }
+        ]
+    )
+
+
+@callback(
+    Output("main-canvas", "children", allow_duplicate=True),
     Input({"experiment": ALL, "action": ALL, "input": ALL, "general": True}, "n_clicks"),
     State("app-results-store", "data"),
     State("app-sim-schematic", "data"),
@@ -276,7 +312,7 @@ def draw_canvas_general_diagram(n_clicks, results_data, schematic_data):
     fig["layout"]["xaxis"]["ticktext"] = xaxis_ticktext
 
     fig["layout"]["template"] = "plotly_dark"
-    return dcc.Graph(figure=fig, style={"height": "100vh"}, config={"staticPlot": True})
+    return dcc.Graph(figure=fig, style={"height": "100vh"})
     
 
 @callback(
@@ -301,14 +337,6 @@ def draw_canvas_scheduler(n_clicks, results_data, schematic_data):
     
     match action:
         case "get-workloads":
-            def create_table(inp):
-                data = inp.split("\n")
-                table_data = [] 
-                head = data[0].strip().split(",")
-                for line in data[1:]:
-                    values = line.strip().split(",")
-                    table_data.append(dict(zip(head, values)))
-                return head, table_data
             
             head, table_data = create_table(result)
             for row in table_data:
@@ -367,4 +395,4 @@ def draw_canvas_scheduler(n_clicks, results_data, schematic_data):
             fig["layout"]["plot_bgcolor"] = "#f2f2f2"
             fig.update_xaxes(linecolor="white", mirror=True, gridcolor="lightgray", gridwidth=2)
             fig.update_yaxes(linecolor="white", mirror=True, gridcolor="lightgray", gridwidth=2)
-            return dcc.Graph(figure=fig, style={"height": "100vh"}, config={"staticPlot": True})
+            return dcc.Graph(figure=fig, style={"height": "100vh"})

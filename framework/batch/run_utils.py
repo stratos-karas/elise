@@ -188,7 +188,7 @@ def single_simulation(sim_batch, server_ipaddr, server_port, webui=False):
                 logger.exception("An error occurred during the execution of the simulation")
 
             progress_perc = 100 * (1 - (len(database.preloaded_queue) + len(cluster.waiting_queue) + len(cluster.execution_list)) / total_jobs)
-            msg_to_send = pad_message(json.dumps( {"id": sim_idx, "progress_perc": progress_perc} ).encode())
+            msg_to_send = pad_message(json.dumps( {"sim_id": sim_idx, "progress_perc": progress_perc} ).encode())
             try:
                 sock.send(msg_to_send)
             except:
@@ -203,7 +203,7 @@ def single_simulation(sim_batch, server_ipaddr, server_port, webui=False):
     sim_time = cluster.makespan
 
     # Send the times back to the progress server
-    msg_to_send = pad_message(json.dumps( {"id": sim_idx, "scheduler": scheduler.name, "real_time": real_time, "sim_time": sim_time} ).encode())
+    msg_to_send = pad_message(json.dumps( {"sim_id": sim_idx, "inp_id": inp_idx, "sched_id": sched_idx, "scheduler": scheduler.name, "real_time": real_time, "sim_time": sim_time} ).encode())
     sock.send(msg_to_send)
 
     # Close communication socket
