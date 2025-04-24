@@ -99,27 +99,31 @@ def progress_server(server_ipaddr="127.0.0.1", server_port=54321, connections=5,
                         msg_dec = msg_dec[start_pos:end_pos+1]
                         msg_dict = json.loads(msg_dec)
                         
-                        idx = int(msg_dict["id"])
+                        sim_idx = int(msg_dict["sim_id"])
 
                         # Check whether it is a progress report or a time report
                         if "progress_perc" in msg_dict:
 
                             progress_perc = int(msg_dict["progress_perc"])
                             # Update the progress report for the specific simulation run
-                            if progress_perc > progress_list[idx]:
-                                progress_list[idx] = progress_perc
+                            if progress_perc > progress_list[sim_idx]:
+                                progress_list[sim_idx] = progress_perc
 
                         elif "real_time" in msg_dict:
+                            inp_idx = int(msg_dict["inp_id"])
+                            sched_idx = int(msg_dict["sched_id"])
                             scheduler_name = msg_dict["scheduler"]
                             real_time = float(msg_dict["real_time"])
                             sim_time = float(msg_dict["sim_time"])
                             time_ratio = sim_time / (24 * real_time)
 
                             time_reports_list.append((
-                                idx,
+                                sim_idx,
+                                inp_idx,
+                                sched_idx,
                                 scheduler_name,
-                                str(timedelta(seconds=real_time)),
-                                str(timedelta(seconds=sim_time)),
+                                str(timedelta(seconds=real_time)).replace(", ", "_"),
+                                str(timedelta(seconds=sim_time)).replace(", ", "_"),
                                 str(time_ratio)
                             ))
 
@@ -132,9 +136,11 @@ def progress_server(server_ipaddr="127.0.0.1", server_port=54321, connections=5,
 
     # Before closing the server print the time reports of all the simulation runs
     headers = ["Simulation ID", 
+               "Input ID",
+               "Scheduler ID",
                "Scheduler Name", 
-               "Real Time (D, HH:MM:SS)", 
-               "Simulated Time (D, HH:MM:SS)", 
+               "Real Time", 
+               "Simulated Time", 
                "Time Ratio (Simulated Days / 1 real hour)"]
     if export_reports:
         os.makedirs(export_reports, exist_ok=True)
