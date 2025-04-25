@@ -70,6 +70,7 @@ def get_experiment_results(schematic_data, session_data):
 
     # Define basic experiment structure
     results = dict()
+    results["schematic-data"] = schematic_data # Use it to replay an experiment
     results["time-reports"] = import_results(f"{results_dir}/time_reports.csv")
 
     def conditional_action(action: str, out_dir: str):
@@ -161,16 +162,22 @@ def create_table(input):
 @callback(
     Output("results-component-items", "children"),
     Input("app-results-store", "data"),
-    State("app-sim-schematic", "data"),
-    # prevent_initial_call=True
+    prevent_initial_call=True
 )
-def create_results_tree(results_data, schematic_data):
+def create_results_tree(results_data):
     results_component_children = []
     for exp_id, exp in enumerate(results_data):
+        schematic_data_replay = results_data[exp_id]["schematic-data"]
+
         exp_btn = dbc.Button(html.H6(f"Experiment {exp_id}"), id={"experiment": exp_id}, size="sm", outline=True, style={"textAlign": "left", "border": "none"})
         exp_children = []
 
         for action, action_val in exp.items():
+
+            # Ignore if it is about schematic data
+            if action == "schematic-data":
+                continue
+
             action_btn = dbc.Button(get_action_label(action, exp_id), id={"experiment": exp_id, "action": action}, size="sm", outline=True, style={"textAlign": "left", "border": "none"})
             # exp_children.append(action_btn)
 
@@ -186,7 +193,7 @@ def create_results_tree(results_data, schematic_data):
                     
                         input_children = []
                         for sched_id in input_val.keys():
-                            sched_btn = dbc.Button(get_scheduler_label(action, sched_id, schematic_data), id={"experiment": exp_id, "action": action, "input": input_id, "scheduler": sched_id}, size="sm", outline=True, style={"textAlign": "left", "border": "none"}) 
+                            sched_btn = dbc.Button(get_scheduler_label(action, sched_id, schematic_data_replay), id={"experiment": exp_id, "action": action, "input": input_id, "scheduler": sched_id}, size="sm", outline=True, style={"textAlign": "left", "border": "none"}) 
                             input_children.append(sched_btn)
                         
                         input_collapse = dbc.Collapse(dbc.Stack(input_children), id={"type": "experiment-action-input-collapse", "experiment": exp_id, "action": action, "input": input_id}, style={"paddingLeft": "10%"}, is_open=True)
@@ -291,6 +298,7 @@ def draw_canvas_general_diagram(n_clicks, results_data, schematic_data):
     action = triggered_id["action"]
     input_id = triggered_id["input"]
 
+    schematic_data_replay = results_data[exp_id]["schematic-data"]
     result = results_data[exp_id][action][input_id]
     data = []
 
@@ -301,7 +309,7 @@ def draw_canvas_general_diagram(n_clicks, results_data, schematic_data):
         sched_data = from_json(json.loads(sched_val)).data[0]
         if max(sched_data.x) > max_x:
             max_x = max(sched_data.x)
-        sched_name = schematic_data["schedulers"][sched_id]["name"]
+        sched_name = schematic_data_replay["schedulers"][sched_id]["name"]
         sched_data.update({"name": sched_name})
         data.append(sched_data)
     
@@ -362,6 +370,7 @@ def draw_canvas_scheduler(n_clicks, results_data, schematic_data):
     input_id = triggered_id["input"]
     sched_id = triggered_id["scheduler"]
     
+    schematic_data_replay = results_data[exp_id]["schematic-data"]
     result = results_data[exp_id][action][input_id][sched_id]
     
     match action:
@@ -375,13 +384,13 @@ def draw_canvas_scheduler(n_clicks, results_data, schematic_data):
             
             # Create tooltips from the other schedulers
             others = dict()
-            for other_sched_id in schematic_data["schedulers"].keys():
-                try:
-                    if other_sched_id != sched_id:
+            for other_sched_id in schematic_data_replay["schedulers"].keys():
+                if other_sched_id != sched_id:
+                    try:
                         _, other_tdata = create_table(results_data[exp_id][action][input_id][other_sched_id])
                         others[other_sched_id] = other_tdata
-                except:
-                    pass
+                    except:
+                        pass
             
             tooltip = []
             for i, row in enumerate(table_data):
@@ -389,7 +398,7 @@ def draw_canvas_scheduler(n_clicks, results_data, schematic_data):
                 for key in row.keys():
                     values = []
                     for other_sched_id, other_tdata in others.items():
-                        values.append(f"{schematic_data["schedulers"][other_sched_id]["name"]}: {other_tdata[i][key]}")
+                        values.append(f"{schematic_data_replay["schedulers"][other_sched_id]["name"]}: {other_tdata[i][key]}")
                     row_dict[key] = "".join(values)
                 tooltip.append(row_dict)
             
