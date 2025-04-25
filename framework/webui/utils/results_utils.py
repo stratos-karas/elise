@@ -4,6 +4,7 @@ import plotly.graph_objects as go
 from plotly.io import from_json
 import os
 from datetime import timedelta
+from plotly_resampler import register_plotly_resampler
 
 # Dash dependencies
 from dash_extensions.WebSocket import WebSocket
@@ -105,12 +106,36 @@ def get_action_name(action: str):
         case "get-animated-clusters":
             return "Animated Clusters"
 
+def get_action_label(action: str, exp_id: int):
+    action_name = get_action_name(action)
+    action_btn_icon = html.I(" ", className="bi bi-folder2-open", id={"type": "experiment-action-icon", "experiment": exp_id, "action": action})
+    if action == "time-reports":
+        action_btn_icon = html.I(" ", className="bi bi-table")
+    return [action_btn_icon, action_name]
+
 def get_input_name(input_id: str):
     return input_id.replace("input-", "Input ")
+
+def get_input_label(exp_id: int, action: str, input_id: str, is_general: bool):
+    input_name = get_input_name(input_id)
+    input_btn_icon = html.I(" ", className="bi bi-folder2-open", id={"type": "experiment-action-input-icon", "experiment": exp_id, "action": action, "input": input_id})
+    if is_general:
+        input_btn_icon = html.I(" ", className="bi bi-graph-up")
+    
+    return [input_btn_icon, input_name]
 
 def get_scheduler_name(sched_id: str, schematic_data: dict):
     scheduler_name = schematic_data["schedulers"][sched_id]["name"]
     return f"{sched_id.replace('scheduler-', '')}. {scheduler_name}"
+
+def get_scheduler_label(action: str, sched_id: str, schematic_data: dict):
+    sched_index = list(schematic_data["schedulers"].keys()).index(sched_id)
+    sched_name = schematic_data["schedulers"][sched_id]["name"]
+    sched_btn_icon = html.I(" ", className="bi bi-graph-up")
+    if action == "get-workloads":
+        sched_btn_icon = html.I(" ", className="bi bi-table")
+    return [sched_btn_icon, sched_name, html.Sub(sched_index)]
+
 
 def is_general_diagram(action: str):
     match action:
@@ -146,21 +171,22 @@ def create_results_tree(results_data, schematic_data):
         exp_children = []
 
         for action, action_val in exp.items():
-            action_btn = dbc.Button(get_action_name(action), id={"experiment": exp_id, "action": action}, size="sm", outline=True, style={"textAlign": "left", "border": "none"})
+            action_btn = dbc.Button(get_action_label(action, exp_id), id={"experiment": exp_id, "action": action}, size="sm", outline=True, style={"textAlign": "left", "border": "none"})
             # exp_children.append(action_btn)
 
             if type(action_val) == dict:
                 action_children = []
                 for input_id, input_val in action_val.items():
                     general_diagram = is_general_diagram(action)
-                    input_btn = dbc.Button(get_input_name(input_id), id={"experiment": exp_id, "action": action, "input": input_id, "general": general_diagram}, size="sm", outline=True, style={"textAlign": "left", "border": "none"})
+                    # input_btn = dbc.Button([html.I(" ", className="bi bi-folder2-open"), get_input_name(input_id)], id={"experiment": exp_id, "action": action, "input": input_id, "general": general_diagram}, size="sm", outline=True, style={"textAlign": "left", "border": "none"})
+                    input_btn = dbc.Button(get_input_label(exp_id, action, input_id, general_diagram), id={"experiment": exp_id, "action": action, "input": input_id, "general": general_diagram}, size="sm", outline=True, style={"textAlign": "left", "border": "none"})
                     
                     # Check if we want a general diagram or a per scheduler diagram
                     if not general_diagram:
                     
                         input_children = []
                         for sched_id in input_val.keys():
-                            sched_btn = dbc.Button(get_scheduler_name(sched_id, schematic_data), id={"experiment": exp_id, "action": action, "input": input_id, "scheduler": sched_id}, size="sm", outline=True, style={"textAlign": "left", "border": "none"}) 
+                            sched_btn = dbc.Button(get_scheduler_label(action, sched_id, schematic_data), id={"experiment": exp_id, "action": action, "input": input_id, "scheduler": sched_id}, size="sm", outline=True, style={"textAlign": "left", "border": "none"}) 
                             input_children.append(sched_btn)
                         
                         input_collapse = dbc.Collapse(dbc.Stack(input_children), id={"type": "experiment-action-input-collapse", "experiment": exp_id, "action": action, "input": input_id}, style={"paddingLeft": "10%"}, is_open=True)
@@ -193,22 +219,25 @@ def experiment_collapses(n_clicks, is_open):
 
 @callback(
     Output({"type": "experiment-action-collapse", "experiment": MATCH, "action": MATCH}, "is_open"),
+    Output({"type": "experiment-action-icon", "experiment": MATCH, "action": MATCH}, "className"),
     Input({"experiment": MATCH, "action": MATCH}, "n_clicks"),
     State({"type": "experiment-action-collapse", "experiment": MATCH, "action": MATCH}, "is_open"),
     prevent_initial_call=True
 )
 def experiment_action_collapses(n_clicks, is_open):
-    return not is_open
+    class_name = "bi bi-folder2" if is_open else "bi bi-folder2-open"
+    return not is_open, class_name
 
 @callback(
     Output({"type": "experiment-action-input-collapse", "experiment": MATCH, "action": MATCH, "input": MATCH}, "is_open"),
+    Output({"type": "experiment-action-input-icon", "experiment": MATCH, "action": MATCH, "input": MATCH}, "className"),
     Input({"experiment": MATCH, "action": MATCH, "input": MATCH, "general": False}, "n_clicks"),
     State({"type": "experiment-action-input-collapse", "experiment": MATCH, "action": MATCH, "input": MATCH}, "is_open"),
     prevent_initial_call=True
 )
 def experiment_input_collapses(n_clicks, is_open):
-    print(False)
-    return not is_open
+    class_name = "bi bi-folder2" if is_open else "bi bi-folder2-open"
+    return not is_open, class_name
 
 @callback(
     Output("main-canvas", "children", allow_duplicate=True),
@@ -246,7 +275,6 @@ def draw_report_table(n_clicks, results_data):
         ]
     )
 
-
 @callback(
     Output("main-canvas", "children", allow_duplicate=True),
     Input({"experiment": ALL, "action": ALL, "input": ALL, "general": True}, "n_clicks"),
@@ -265,6 +293,8 @@ def draw_canvas_general_diagram(n_clicks, results_data, schematic_data):
 
     result = results_data[exp_id][action][input_id]
     data = []
+
+    register_plotly_resampler()
 
     max_x = -1
     for sched_id, sched_val in result.items():
@@ -314,7 +344,6 @@ def draw_canvas_general_diagram(n_clicks, results_data, schematic_data):
     fig["layout"]["template"] = "plotly_dark"
     return dcc.Graph(figure=fig, style={"height": "100vh"})
     
-
 @callback(
     Output("main-canvas", "children", allow_duplicate=True),
     Input({"experiment": ALL, "action": ALL, "input": ALL, "scheduler": ALL}, "n_clicks"),
@@ -392,6 +421,7 @@ def draw_canvas_scheduler(n_clicks, results_data, schematic_data):
         
         case _:
             # For Plotly graphs
+            register_plotly_resampler()
             data = json.loads(result)
             fig = from_json(data)
             fig["layout"]["template"] = "plotly_dark"
