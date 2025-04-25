@@ -129,13 +129,13 @@ def get_scheduler_name(sched_id: str, schematic_data: dict):
     scheduler_name = schematic_data["schedulers"][sched_id]["name"]
     return f"{sched_id.replace('scheduler-', '')}. {scheduler_name}"
 
-def get_scheduler_label(action: str, sched_id: str, schematic_data: dict):
+def get_scheduler_label(exp_id: int, action: str, input_id: str, sched_id: str, schematic_data: dict):
     sched_index = list(schematic_data["schedulers"].keys()).index(sched_id)
     sched_name = schematic_data["schedulers"][sched_id]["name"]
     sched_btn_icon = html.I(" ", className="bi bi-graph-up")
     if action == "get-workloads":
         sched_btn_icon = html.I(" ", className="bi bi-table")
-    return [sched_btn_icon, sched_name, html.Sub(sched_index)]
+    return [sched_btn_icon, sched_name, html.Sub(f"({sched_index})", id={"type": "hover-sub", "experiment": exp_id, "action": action, "input": input_id, "scheduler": sched_id}, style={"display": "none"})]
 
 
 def is_general_diagram(action: str):
@@ -193,8 +193,18 @@ def create_results_tree(results_data):
                     
                         input_children = []
                         for sched_id in input_val.keys():
-                            sched_btn = dbc.Button(get_scheduler_label(action, sched_id, schematic_data_replay), id={"experiment": exp_id, "action": action, "input": input_id, "scheduler": sched_id}, size="sm", outline=True, style={"textAlign": "left", "border": "none"}) 
-                            input_children.append(sched_btn)
+                            sched_btn = dbc.Button(get_scheduler_label(exp_id, action, input_id, sched_id, schematic_data_replay), 
+                                                   id={"experiment": exp_id, "action": action, "input": input_id, "scheduler": sched_id}, 
+                                                   size="sm", 
+                                                   outline=True, 
+                                                   style={"textAlign": "left", "border": "none", "flex": 1, "width": "100%"}) 
+                            popover = dbc.Popover(
+                                id={"type": "hover", "experiment": exp_id, "action": action, "input": input_id, "scheduler": sched_id},
+                                trigger="hover",
+                                target={"experiment": exp_id, "action": action, "input": input_id, "scheduler": sched_id},
+                                className="d-none"
+                            )
+                            input_children.append(html.Div([sched_btn, popover], style={"flex": 1}))
                         
                         input_collapse = dbc.Collapse(dbc.Stack(input_children), id={"type": "experiment-action-input-collapse", "experiment": exp_id, "action": action, "input": input_id}, style={"paddingLeft": "10%"}, is_open=True)
 
@@ -309,8 +319,9 @@ def draw_canvas_general_diagram(n_clicks, results_data, schematic_data):
         sched_data = from_json(json.loads(sched_val)).data[0]
         if max(sched_data.x) > max_x:
             max_x = max(sched_data.x)
+        sched_index = list(schematic_data_replay["schedulers"]).index(sched_id)
         sched_name = schematic_data_replay["schedulers"][sched_id]["name"]
-        sched_data.update({"name": sched_name})
+        sched_data.update({"name": f"{sched_name}<sub>({sched_index})</sub>"})
         data.append(sched_data)
     
     fig = go.Figure(data=data)
@@ -352,6 +363,16 @@ def draw_canvas_general_diagram(n_clicks, results_data, schematic_data):
     fig["layout"]["template"] = "plotly_dark"
     return dcc.Graph(figure=fig, style={"height": "100vh"})
     
+
+@callback(
+    Output({"type": "hover-sub", "experiment": MATCH, "action": MATCH, "input": MATCH, "scheduler": MATCH}, "style"),
+    Input({"type": "hover", "experiment": MATCH, "action": MATCH, "input": MATCH, "scheduler": MATCH}, "is_open"),
+    prevent_initial_call=True
+)
+def hover_icon_display(is_open):
+    return {"display": "inline-block"} if is_open else {"display": "none"}
+    
+
 @callback(
     Output("main-canvas", "children", allow_duplicate=True),
     Input({"experiment": ALL, "action": ALL, "input": ALL, "scheduler": ALL}, "n_clicks"),
