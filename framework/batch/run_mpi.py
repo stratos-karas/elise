@@ -21,7 +21,8 @@ rank = comm.Get_rank()
 # Define the server IP address and port number for all MPI ranks
 server_ipaddr = sys.argv[3]
 server_port = int(sys.argv[4])
-multiple_simulations_partial = partial(multiple_simulations, server_ipaddr=server_ipaddr, server_port=server_port)
+webui = bool(int(sys.argv[5]))
+multiple_simulations_partial = partial(multiple_simulations, server_ipaddr=server_ipaddr, server_port=server_port, webui=webui)
 
 if rank == 0:
 
@@ -33,7 +34,7 @@ if rank == 0:
     total_procs = comm.Get_size()
 
     from batch.batch_utils import BatchCreator
-    batch_creator = BatchCreator(schematic_file_path)
+    batch_creator = BatchCreator(schematic_file_path, webui)
     batch_creator.create_ranks()
 
     if total_procs > 1:

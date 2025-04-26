@@ -1,5 +1,4 @@
 from abc import ABC
-from .ranks import RanksCoscheduler
 from numpy.random import seed, randint
 from time import time_ns
 from math import inf
@@ -14,7 +13,7 @@ from realsim.jobs.jobs import Job
 from realsim.scheduler.coschedulers.ranks.ranks import RanksCoscheduler
 
 
-class SlowdownRanksCoscheduler(RanksCoscheduler, ABC):
+class SlowdownRanksCoscheduler(RanksCoscheduler):
 
     name = "Slowdown in favor Co-Scheduler"
     description = """Co-scheduling using ranks architecture to favor job avg speeedup and then slowdown"""
@@ -24,7 +23,7 @@ class SlowdownRanksCoscheduler(RanksCoscheduler, ABC):
         # return float(randint(len(self.cluster.waiting_queue)))
 	    return 1.0
 
-    def coloc_condition(self, hostname: str, job: Job) -> (float,float):
+    def host_alloc_condition(self, hostname: str, job: Job):
         """Condition on how to sort the hosts based on the speedup that the job
         will gain/lose. Always spread first
         """

@@ -192,7 +192,7 @@ class Scheduler(ABC):
 
     #     return dict(self.mgr_suitable_hosts), self.mgr_req_cores.get() <= 0
 
-    def host_alloc_condition(self, hostname: str, job: Job) -> float:
+    def host_alloc_condition(self, hostname: str, job: Job):
         """Condition on which hosts to use first for allocation.
         """
         return 1.0

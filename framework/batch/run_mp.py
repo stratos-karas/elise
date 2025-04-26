@@ -13,18 +13,21 @@ from run_utils import multiple_simulations
 
 logger = define_logger(log_ancestry=True, log_env=True)
 
-batch_creator = BatchCreator(sys.argv[1])
-batch_creator.create_ranks()
-
+schematic_file_path = sys.argv[1]
 total_procs = int(sys.argv[2])
 batch_size = int(sys.argv[3])
 server_ipaddr = sys.argv[4]
 server_port = int(sys.argv[5])
+webui = bool(int(sys.argv[6]))
+
+batch_creator = BatchCreator(schematic_file_path, webui)
+batch_creator.create_ranks()
+
 
 logger.debug(f"Creating a process pool of {total_procs} max workers")
 executor = ProcessPoolExecutor(max_workers=total_procs)
 
-multiple_simulations_partial = partial(multiple_simulations, server_ipaddr=server_ipaddr, server_port=server_port)
+multiple_simulations_partial = partial(multiple_simulations, server_ipaddr=server_ipaddr, server_port=server_port, webui=webui)
 
 for i in range(total_procs):
     logger.debug(f"Worker {i} gets {batch_size} number of simulation configurations")
