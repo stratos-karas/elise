@@ -8,7 +8,7 @@ sys.path.append(os.path.abspath(os.path.join(
 
 from realsim.cluster.host import Host
 from realsim.jobs.utils import deepcopy_list
-from .fifo import FIFOScheduler
+from realsim.scheduler.schedulers.fifo import FIFOScheduler
 from math import inf
 
 

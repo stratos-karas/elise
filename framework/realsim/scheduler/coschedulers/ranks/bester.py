@@ -1,5 +1,4 @@
 from abc import ABC
-from .ranks import RanksCoscheduler
 from numpy.random import seed, randint
 from time import time_ns
 import os
@@ -16,7 +15,7 @@ from realsim.scheduler.coschedulers.ranks.ranks import RanksCoscheduler
 from realsim.cluster.host import Host
 
 
-class BesterCoscheduler(RanksCoscheduler, ABC):
+class BesterCoscheduler(RanksCoscheduler):
 
     name = "Bester Ranks Co-Scheduler"
     description = """Random co-scheduling using ranks architecture as a fallback
@@ -82,7 +81,7 @@ class BesterCoscheduler(RanksCoscheduler, ABC):
         for b_job in backfilling_jobs:
 
             # Colocate
-            if self.colocation(b_job, self.cluster.half_socket_allocation):
+            if self.allocation(b_job, self.cluster.half_socket_allocation, immediate=True):
                 deployed = True
                 self.after_deployment()
             # Compact

@@ -1,4 +1,3 @@
-from .ranks import RanksCoscheduler
 import os
 import sys
 

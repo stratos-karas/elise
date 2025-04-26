@@ -29,7 +29,9 @@ def create_twinfile(session_dir, filename, contents, content_type):
     parsed_contents = parse_uploaded_contents(contents, content_type)
 
     ## encode filename
-    name, suffix = filename.split(".")
+    suffix_start_pos = filename.rfind(".")
+    name = filename[:suffix_start_pos]
+    suffix = filename[suffix_start_pos+1:]
     enc_name = base64.b64encode(name.encode("utf-8")).decode("utf-8")
     enc_filename = f"{session_dir}/{enc_name}.{suffix}"
 

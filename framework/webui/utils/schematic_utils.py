@@ -22,6 +22,8 @@ def transform_socket_conf(socket_conf_str: str) -> list[int]:
 
 def transform_input(data):
     batch_input = dict()
+    batch_input["loads-machine"] = ""
+    batch_input["loads-suite"] = ""
     match data["logs-source"]:
         case "Database":
             batch_input["db"] = data["logs-value"]
