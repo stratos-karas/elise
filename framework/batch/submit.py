@@ -2,6 +2,7 @@ import argparse
 from math import ceil
 from multiprocessing import cpu_count
 import os
+from pathlib import Path
 import socket
 import subprocess
 import sys
@@ -84,9 +85,12 @@ def spawn_progress_server(server_ipaddr: str, server_port: int, connections: int
         >>> sim_progress_proc = spawn_progress_server(server_ipaddr, server_port, connections)
     """
     logger.debug(f"Starting progress server process")
+    
+    # Get path for Progress Server
+    progress_server_path = Path(ELiSE_ROOT) / "batch/progress_server.py"
 
     # Create a command to run the "progress_server.py" script, passing in the required arguments
-    server_prog_cmd = ["python", f"{ELiSE_ROOT}/batch/progress_server.py", "--server_ipaddr", server_ipaddr, "--server_port", str(server_port), "--connections", str(connections)]
+    server_prog_cmd = ["python", str(progress_server_path), "--server_ipaddr", server_ipaddr, "--server_port", str(server_port), "--connections", str(connections)]
     
     # If export_reports is True, add an argument to export reports
     if export_reports:
@@ -138,11 +142,24 @@ def spawn_simulation_runs(schematic_file: str, provider: str, server_ipaddr: str
     submission_cmd = list()
     if provider == "mp":
         logger.debug("Using Python's multiprocessing library as backend")
-        submission_cmd = ["python", f"{ELiSE_ROOT}/batch/run_mp.py", schematic_file, str(total_procs), str(batch_size), server_ipaddr, str(server_port)]
+        # Get path for running with multiprocessing library
+        run_mp_path = Path(ELiSE_ROOT) / "batch/run_mp.py"
+        submission_cmd = ["python", str(run_mp_path), schematic_file, str(total_procs), str(batch_size), server_ipaddr, str(server_port)]
 
-    elif provider == "mpi":
+    elif provider == "openmpi":
         logger.debug("Using MPI as backend")
-        submission_cmd = ["mpirun", "--bind-to", "none", "--oversubscribe", "-np", str(total_procs), "python", f"{ELiSE_ROOT}/batch/run_mpi.py", schematic_file, str(batch_size), server_ipaddr, str(server_port)]
+        # Get path for running with MPI library
+        run_mpi_path = Path(ELiSE_ROOT) / "batch/run_mpi.py"
+        submission_cmd = ["mpirun", "--bind-to", "none", "--oversubscribe", "-np", str(total_procs), "python", str(run_mpi_path), schematic_file, str(batch_size), server_ipaddr, str(server_port)]
+
+    elif provider == "intelmpi":
+        logger.debug("Using MPI as backend")
+        # Get path for running with MPI library
+        run_mpi_path = Path(ELiSE_ROOT) / "batch/run_mpi.py"
+        
+        # Intel MPI supports oversubscription by default
+        # Not defining a bind policy places the threads randomly
+        submission_cmd = ["mpiexec", "-np", str(total_procs), "python", str(run_mpi_path), schematic_file, str(batch_size), server_ipaddr, str(server_port)]
     
     # Handle WebUI
     if webui:
@@ -167,7 +184,7 @@ def execute_simulation(cmdargs=None):
     """
 
     # Current supported providers. Might need to specify different MPI vendors (OpenMPI, IntelMPI)
-    supported_providers = ["mpi", "mp"]
+    supported_providers = ["openmpi", "intelmpi", "mp"]
 
     parser = argparse.ArgumentParser(description="Provide a schematic file and a parallelizing provider to run simulations")
     parser.add_argument("-f", "--schematic-file", help="Provide a schematic file name", required=True)

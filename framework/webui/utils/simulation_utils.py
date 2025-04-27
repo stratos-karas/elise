@@ -89,8 +89,10 @@ def webui_execute_simulation(n_clicks, schematic_data, session_data, results_dat
     filename = export_schematic(schematic_data, session_data)
     # Get provider
     match provider:
-        case "MPI":
-            provider = "mpi"
+        case "Open MPI":
+            provider = "openmpi"
+        case "Intel MPI":
+            provider = "intelmpi"
         case "Python":
             provider = "mp"
     # Prepare the command line

@@ -1,10 +1,13 @@
 import base64
 import os
+from pathlib import Path
+import tempfile
 
 def get_session_dir(session_data):
     sid = session_data["sid"]
+    path = Path(tempfile.gettempdir())
     session_stem_dir = base64.b64encode(sid.encode("utf-8")).decode("utf-8")
-    session_dir = f"/tmp/{session_stem_dir}"
+    session_dir = path / session_stem_dir
     return session_dir
 
 def parse_uploaded_contents(enc_contents, content_type):
@@ -19,9 +22,9 @@ def parse_uploaded_contents(enc_contents, content_type):
     decoded = base64.b64decode(content_string)
     return decoded.decode('utf-8')
 
-def create_twinfile(session_dir, filename, contents, content_type):
+def create_twinfile(session_dir: Path, filename, contents, content_type):
     # Create the session directory if it doesn't exist
-    if not os.path.isdir(session_dir):
+    if not session_dir.is_dir():
         os.makedirs(session_dir, exist_ok=True)
     
     # Create the twin file
@@ -33,7 +36,8 @@ def create_twinfile(session_dir, filename, contents, content_type):
     name = filename[:suffix_start_pos]
     suffix = filename[suffix_start_pos+1:]
     enc_name = base64.b64encode(name.encode("utf-8")).decode("utf-8")
-    enc_filename = f"{session_dir}/{enc_name}.{suffix}"
+
+    enc_filename = str(session_dir / f"{enc_name}.{suffix}")
 
     # Write contents to new file under session's directory
     with open(enc_filename, "w") as fd:
