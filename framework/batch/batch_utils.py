@@ -1,3 +1,4 @@
+from copy import copy
 from json import loads as json_loads
 from yaml import safe_load
 from pickle import load as pickle_load
@@ -50,10 +51,6 @@ from realsim.cluster.cluster import Cluster
 
 # Schedulers
 from realsim.scheduler.scheduler import Scheduler
-# from realsim.scheduler.schedulers.fifo import FIFOScheduler
-# from realsim.scheduler.schedulers.easy import EASYScheduler
-# from realsim.scheduler.schedulers.conservative import ConservativeScheduler
-# from realsim.scheduler.coschedulers.ranks.random import RandomRanksCoscheduler
 
 # Logger
 from realsim.logger.logger import Logger
@@ -83,6 +80,21 @@ def translate_action(action: str, translate: bool = False):
     else:
         return action
 
+def opt_is_number(val: str):
+    return val.isnumeric()
+
+def opt_is_bool(val: str):
+    values = ["true", "false", "yes", "no"]
+    if val.lower() in values:
+        return True
+
+def correct_opt_val(val: str):
+    if opt_is_number(val):
+        return float(val)
+    elif opt_is_bool(val):
+        return bool(val)
+    else:
+        return val
 
 class BatchCreator:
 
@@ -112,12 +124,6 @@ class BatchCreator:
             if not scheduler_name:
                 scheduler_name = sched_key
             self.__impl_schedulers[scheduler_name] = sched_val["obj"]
-        # self.__impl_schedulers = {
-        #     FIFOScheduler.name: FIFOScheduler,
-        #     EASYScheduler.name: EASYScheduler,
-        #     ConservativeScheduler.name: ConservativeScheduler,
-        #     RandomRanksCoscheduler.name: RandomRanksCoscheduler
-        # }
         
         # If it is called from WebUI the actions will be translated
         self.__webui = webui
@@ -147,7 +153,7 @@ class BatchCreator:
         for input in self.__project_inputs:
             inputs_num += 1 if "repeat" not in input else int(input["repeat"])
 
-        return inputs_num * (1 + len(self.__project_schedulers["others"]))
+        return inputs_num * len(self.__project_schedulers)
 
     def process_inputs(self) -> None:
 
@@ -159,12 +165,14 @@ class BatchCreator:
         for input in self.__project_inputs:
         
             # Create a LoadManager based on the options given
-            lm = LoadManager(machine=input["loads-machine"],
-                             suite=input["loads-suite"])
+            machine = input.get("loads-machine", "")
+            suite = input.get("loads-suite", "")
+            lm = LoadManager(machine=machine, suite=suite)
             # A LoadManager instance can be created using
             if "path" in input:
                 # A path to a directory with the real logs
                 path = input["path"]
+                lm = LoadManager(machine=input["loads-machine"], suite=input["loads-suite"])
                 lm.init_loads(runs_dir=path)
             elif "load-manager" in input:
                 # A pickled LoadManager instance (or json WIP)
@@ -206,7 +214,7 @@ class BatchCreator:
 
                     # If there are multiple then inform the user that the first will be used
                     if len(classes) > 1:
-                        print(f"Multiple generator definitions were found. Using the first definition: {classes[0][0]}")
+                        logger.debug(f"Multiple generator definitions were found. Using the first definition: {classes[0][0]}")
 
                     _, gen_cls = classes[0]
 
@@ -263,7 +271,7 @@ class BatchCreator:
                             classes = list(filter(lambda it: not inspect.isabstract(it[1]) and issubclass(it[1], IDistribution), classes))
                             # If there are multiple then inform the user that the first will be used
                             if len(classes) > 1:
-                                print(f"Multiple distribution definitions were found. Using the first definition: {classes[0][0]}")
+                                logger.debug(f"Multiple distribution definitions were found. Using the first definition: {classes[0][0]}")
 
                             _, distr_cls = classes[0]
                             # Export module for MPI procs
@@ -299,12 +307,13 @@ class BatchCreator:
         
         # Because there might multiple schedulers with the same name but different arguments
         # give each one of them an index
-        sched_index = 0
 
-        for scheduler in [self.__project_schedulers["default"]] + self.__project_schedulers["others"]:
+        for sched_index, sched_dict in enumerate(self.__project_schedulers):
+            
+            base_scheduler = sched_dict["base"]            
 
-            if os.path.exists(scheduler) and ".py" in scheduler:
-                spec_name = import_module(scheduler)
+            if os.path.exists(base_scheduler) and ".py" in base_scheduler:
+                spec_name = import_module(base_scheduler)
                 sched_mod = sys.modules[spec_name]
                 classes = inspect.getmembers(sched_mod, inspect.isclass)
                 classes = list(filter(lambda it: not inspect.isabstract(it[1]) and issubclass(it[1], Scheduler), classes))
@@ -315,15 +324,18 @@ class BatchCreator:
                 _, sched_cls = classes[0]
 
                 # To export modules for MPI procs
-                print(scheduler)
-                self.mods_export.append(scheduler)
+                print(base_scheduler)
+                self.mods_export.append(base_scheduler)
             else:
                 try:
-                    sched_cls = self.__impl_schedulers[scheduler]
+                    sched_cls = self.__impl_schedulers[base_scheduler]
                 except:
-                    raise RuntimeError(f"Scheduler of type {scheduler} does not exist")
+                    raise RuntimeError(f"Scheduler of type {base_scheduler} does not exist")
+            
+            # Get scheduler options
+            sched_opts = [(opt, val) for opt, val in sched_dict.items() if opt != "base"]
 
-            self.__schedulers.append((sched_index, sched_cls))
+            self.__schedulers.append((sched_index, sched_cls, sched_opts))
             sched_index += 1
 
         logger.debug(f"Finished processing the schedulers: {self.__schedulers}")
@@ -356,7 +368,7 @@ class BatchCreator:
         self.__actions = dict()
         for input_index in range(len(self.__inputs)):
             input_dict = dict()
-            for sched_index, sched_cls in self.__schedulers:
+            for sched_index, _, _ in self.__schedulers:
                 input_dict.update({sched_index: []})
             self.__actions.update({input_index: input_dict})
 
@@ -405,8 +417,8 @@ class BatchCreator:
         # Create the ranks
         self.ranks = list()
         for input_index, [input, heatmap, nodes, socket_conf] in enumerate(self.__inputs):
-            for sched_index, sched_cls in self.__schedulers:
-
+            for [sched_index, sched_cls, sched_opts] in self.__schedulers:
+                
                 # Create a database instance
                 database = Database(input, heatmap)
                 database.setup()
@@ -416,21 +428,20 @@ class BatchCreator:
 
                 # Create a scheduler instance
                 scheduler = sched_cls()
-                # Apply all the general options if any exists
-                if "general-options" in self.__project_schedulers:
-                    for opt, val in self.__project_schedulers["general-options"].items():
-                        scheduler.__dict__[opt] = val
+                # Apply options to scheduler instance
+                for opt, val in sched_opts:
+                    scheduler.__dict__[opt] = val
 
                 # Create a logger instance
-                logger = Logger(debug=False)
+                evt_logger = Logger(debug=False)
 
                 # Create a compute engine instance
-                compengine = ComputeEngine(database, cluster, scheduler, logger)
+                compengine = ComputeEngine(database, cluster, scheduler, evt_logger)
                 compengine.setup_preloaded_jobs()
 
                 # Set actions for this simulation
                 actions = self.__actions[input_index][sched_index]
 
-                self.ranks.append((sim_idx, input_index, sched_index, database, cluster, scheduler, logger, compengine, actions, self.__extra_features))
+                self.ranks.append((sim_idx, input_index, sched_index, database, cluster, scheduler, evt_logger, compengine, actions, self.__extra_features))
 
                 sim_idx += 1

@@ -56,16 +56,16 @@ def transform_inputs(inputs):
     return [transform_input(value) for value in inputs.values()]
 
 def transform_schedulers(schedulers):
-    batch_schedulers = dict()
-    batch_schedulers["default"] = ""
-    batch_schedulers["others"] = []
-    batch_schedulers["global_options"] = {"backfill_enabled": True, "compact_fallback": True}
-
-    for val in schedulers.values():
-        if 1 in val["options"]:
-            batch_schedulers["default"] = val["value"]
-        else:
-            batch_schedulers["others"].append(val["value"])
+    batch_schedulers = list()
+    
+    for webui_sched_dict in schedulers.values():
+        sched_dict = dict()
+        sched_dict["base"] = webui_sched_dict["value"]
+        # setting default scheduler might not be used by the batch system
+        sched_dict["backfill_enabled"] = 2 in webui_sched_dict["options"]
+        sched_dict["compact_fallback"] = 3 in webui_sched_dict["options"]
+        
+        batch_schedulers.append(sched_dict)
     
     return batch_schedulers
 

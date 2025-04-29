@@ -147,13 +147,13 @@ def spawn_simulation_runs(schematic_file: str, provider: str, server_ipaddr: str
         submission_cmd = ["python", str(run_mp_path), schematic_file, str(total_procs), str(batch_size), server_ipaddr, str(server_port)]
 
     elif provider == "openmpi":
-        logger.debug("Using MPI as backend")
+        logger.debug("Using OpenMPI as backend")
         # Get path for running with MPI library
         run_mpi_path = Path(ELiSE_ROOT) / "batch/run_mpi.py"
         submission_cmd = ["mpirun", "--bind-to", "none", "--oversubscribe", "-np", str(total_procs), "python", str(run_mpi_path), schematic_file, str(batch_size), server_ipaddr, str(server_port)]
 
     elif provider == "intelmpi":
-        logger.debug("Using MPI as backend")
+        logger.debug("Using IntelMPI as backend")
         # Get path for running with MPI library
         run_mpi_path = Path(ELiSE_ROOT) / "batch/run_mpi.py"
         

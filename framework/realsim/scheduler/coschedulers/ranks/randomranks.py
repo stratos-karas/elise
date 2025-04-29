@@ -20,5 +20,5 @@ class RandomRanksCoscheduler(RanksCoscheduler):
     def host_alloc_condition(self, hostname: str, job: Job) -> float:
         return float(self.cluster.hosts[hostname].state != Host.IDLE)
 
-    def backfill(self) -> bool:
-        return False
+    # def backfill(self) -> bool:
+    #     return False
