@@ -66,7 +66,7 @@ class EASYScheduler(FIFOScheduler):
             if b_job.wall_time <= min_estimated_time:
 
                 # Check if it can fit in the spare resources of the cluster
-                if self.compact_allocation(b_job):
+                if self.compact_allocation(b_job, immediate=True):
                     deployed = True
         
         return deployed

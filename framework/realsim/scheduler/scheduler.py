@@ -119,14 +119,19 @@ class Scheduler(ABC):
         cores_per_host = sum(socket_conf)
         to_be_allocated = dict()
         for hostname, host in self.cluster.hosts.items():
+            host_sockets = host.sockets
             # If under the specifications of the required cores and socket 
             # allocation *takes advantage of short circuit for idle hosts
-            if host.state == Host.IDLE or reduce(lambda x, y: x[0] <= len(x[1]) and y[0] <= len(y[1]), list(zip(socket_conf, host.sockets))):
+            if host.state == Host.IDLE or all(x[0] <= len(x[1]) for x in zip(socket_conf, host.sockets)):
                 req_cores -= cores_per_host
-                to_be_allocated.update({hostname: [
-                    ProcSet.from_str(' '.join([str(x) for x in p_set[:socket_conf[i]]]))
-                    for i, p_set in enumerate(host.sockets)]
-                })
+                # to_be_allocated.update({hostname: [
+                #     ProcSet.from_str(' '.join([str(x) for x in p_set[:socket_conf[i]]]))
+                #     for i, p_set in enumerate(host.sockets)]
+                # })
+                to_be_allocated[hostname] = [
+                    ProcSet.from_str(' '.join(map(str, p_set[:socket_conf[i]])))
+                    for i, p_set in enumerate(host_sockets)
+                ]
                 if immediate:
                     if req_cores <= 0:
                         return to_be_allocated, True
