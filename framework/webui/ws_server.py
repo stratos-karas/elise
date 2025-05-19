@@ -90,12 +90,15 @@ def websocket_server(host=ws_ipaddr, port=55500):
     with serve(echo, host, port, ping_timeout=None) as ws_server:
         ws_server.serve_forever()
 
-if __name__ == "__main__":
+def main():
     t1 = threading.Thread(target=start_tcp_server)
     t2 = threading.Thread(target=websocket_server)
     
     t1.start()
     t2.start()
-
+    
     t1.join()
     t2.join()
+
+if __name__ == "__main__":
+    main()

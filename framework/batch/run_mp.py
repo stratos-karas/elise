@@ -1,5 +1,6 @@
 from concurrent.futures import ProcessPoolExecutor
 from functools import partial
+from multiprocessing import freeze_support
 import os
 import sys
 
@@ -12,6 +13,10 @@ from common.utils import define_logger
 from run_utils import multiple_simulations
 
 if __name__ == "__main__":
+    
+    freeze_support()
+
+
     logger = define_logger(log_ancestry=True, log_env=True)
 
     schematic_file_path = sys.argv[1]
