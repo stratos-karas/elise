@@ -11,8 +11,11 @@ from dash.exceptions import PreventUpdate
 import dash_bootstrap_components as dbc
 
 # WebUI dependencies
-from utils.common_utils import get_session_dir
-
+# Start from ELiSE framework root
+sys.path.append(os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "..", "..")
+))
+from webui.utils.common_utils import get_session_dir
 
 
 def transform_socket_conf(socket_conf_str: str) -> list[int]:

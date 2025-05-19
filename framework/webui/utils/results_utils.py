@@ -4,7 +4,11 @@ import plotly.graph_objects as go
 from plotly.io import from_json
 import os
 from datetime import timedelta
-from plotly_resampler import register_plotly_resampler
+import sys
+
+sys.path.append(os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "../..")
+))
 
 # Dash dependencies
 from dash_extensions.WebSocket import WebSocket
@@ -13,7 +17,7 @@ from dash_extensions.enrich import Input, Output, State, callback, html, ALL, cl
 from dash.exceptions import PreventUpdate
 
 # WebUI dependencies
-from utils.common_utils import get_session_dir
+from webui.utils.common_utils import get_session_dir
 
 def import_results(path: str):
     # If it exists and is a file return the contents
@@ -312,8 +316,6 @@ def draw_canvas_general_diagram(n_clicks, results_data, schematic_data):
     result = results_data[exp_id][action][input_id]
     data = []
 
-    register_plotly_resampler()
-
     max_x = -1
     for sched_id, sched_val in result.items():
         sched_data = from_json(json.loads(sched_val)).data[0]
@@ -451,7 +453,6 @@ def draw_canvas_scheduler(n_clicks, results_data, schematic_data):
         
         case _:
             # For Plotly graphs
-            register_plotly_resampler()
             data = json.loads(result)
             fig = from_json(data)
             fig["layout"]["template"] = "plotly_dark"

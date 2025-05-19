@@ -4,7 +4,13 @@ from dash.exceptions import PreventUpdate
 import dash_bootstrap_components as dbc
 
 import base64
-from utils.common_utils import create_twinfile, get_session_dir
+import os
+import sys
+# Start from ELiSE framework root
+sys.path.append(os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "..", "..")
+))
+from webui.utils.common_utils import create_twinfile, get_session_dir
 
 """
 app-sim-schematic::workloads

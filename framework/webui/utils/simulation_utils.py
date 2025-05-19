@@ -9,15 +9,16 @@ import dash_bootstrap_components as dbc
 from dash_extensions.enrich import Input, Output, State, callback, html, ALL
 from dash.exceptions import PreventUpdate
 
-# WebUI dependencies
-from utils.schematic_utils import export_schematic
-from utils.common_utils import get_session_dir
-from utils.results_utils import get_experiment_results
-
-# elise library dipendencies
 sys.path.append(os.path.abspath(
     os.path.join(os.path.dirname(__file__), "../..")
 ))
+
+# WebUI dependencies
+from webui.utils.schematic_utils import export_schematic
+from webui.utils.common_utils import get_session_dir
+from webui.utils.results_utils import get_experiment_results
+
+# elise library dipendencies
 from batch.submit import execute_simulation
 
 def get_ip():

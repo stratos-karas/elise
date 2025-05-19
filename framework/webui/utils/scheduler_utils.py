@@ -5,15 +5,14 @@ from dash.exceptions import PreventUpdate
 import dash_bootstrap_components as dbc
 
 import base64
-from utils.common_utils import create_twinfile, get_session_dir
-
 import os
 import sys
 
 sys.path.append(os.path.abspath(os.path.join(
-    os.path.dirname(__file__), "../.."
+    os.path.dirname(__file__), "..", ".."
 )))
 
+from webui.utils.common_utils import create_twinfile, get_session_dir
 from common.hierarchy import parse_classes_from_file, build_class_hierarchy, mermaid_graph
 
 # Schedulers' timer to update the list and the mermaid graph 
@@ -25,7 +24,14 @@ scheduler_class_hierarchy = build_class_hierarchy(os.path.abspath(os.path.join(o
 # Create mermaid graph
 schedulers_hierarchy_modal = dbc.Modal([
     dbc.ModalHeader(dbc.ModalTitle("Schedulers' Hierarchy")),
-    dbc.ModalBody(Mermaid(id="schedulers-mermaid-graph", chart=mermaid_graph(scheduler_class_hierarchy)))
+    dbc.ModalBody(Mermaid(id="schedulers-mermaid-graph", chart=mermaid_graph(scheduler_class_hierarchy), config={
+        "theme": "base",
+        "themeVariables": {
+            "primaryColor": "#73c6b6" ,
+            "primaryTextColor": "#fff",
+            "lineColor": "#fff"
+        }
+    }))
 ], is_open=False, size="lg", id="schedulers-hierarchy-modal")
 
 

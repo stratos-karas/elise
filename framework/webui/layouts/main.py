@@ -1,14 +1,19 @@
 from dash import dcc, html
 from dash import callback, callback_context, Output, Input, State
 from dash.exceptions import PreventUpdate
-# import dash_blueprint_components as dpc
 import dash_bootstrap_components as dbc
 
-from utils import schematic_utils
-from utils.input_utils import inputs_modal
-from utils.scheduler_utils import schedulers_modal, schedulers_hierarchy_modal, schedulers_timer
-from utils.action_utils import action_items_ctn, actions_modal
-from utils.simulation_utils import progress_bar, app_progress_report, progress_finished
+import os
+import sys
+# Start from ELiSE framework root
+sys.path.append(os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "..", "..")
+))
+from webui.utils import schematic_utils
+from webui.utils.input_utils import inputs_modal
+from webui.utils.scheduler_utils import schedulers_modal, schedulers_hierarchy_modal, schedulers_timer
+from webui.utils.action_utils import action_items_ctn, actions_modal
+from webui.utils.simulation_utils import progress_bar, app_progress_report, progress_finished
 
 # SCHEMATIC TOOL
 def schematic_component(name: str, description = None, items: list[dbc.ListGroupItem] = list(), add_button_enabled: bool = True):
