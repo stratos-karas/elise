@@ -222,9 +222,17 @@ class Logger(object):
         )
 
     def get_jobs_throughput(self):
+        num_of_jobs: list[int] = list()
+        for check in sorted(list(self.cluster_events["checkpoints"])):
+            jobs_in_check = 0
+            for _, jevt in self.job_events.items():
+                if jevt["finish time"] <= check:
+                    jobs_in_check += 1
+            num_of_jobs.append(jobs_in_check)
+
         return (
                 sorted(list(self.cluster_events["checkpoints"])),
-                self.cluster_events["finished jobs"]
+                num_of_jobs
         )
 
     def get_unused_cores_graph(self):
