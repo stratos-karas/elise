@@ -29,6 +29,7 @@ scheduler_hierarchy = import_schedulers_hierarchy(os.path.abspath(os.path.join(o
 from api.loader import LoadManager
 
 # Database
+from realsim.jobs.utils import deepcopy_list
 from realsim.database import Database
 
 # Generators
@@ -420,7 +421,7 @@ class BatchCreator:
             for [sched_index, sched_cls, sched_opts] in self.__schedulers:
                 
                 # Create a database instance
-                database = Database(input, heatmap)
+                database = Database(deepcopy_list(input), heatmap)
                 database.setup()
 
                 # Create a cluster instance
