@@ -1,0 +1,60 @@
+name: Build elise and upload the artifacts for Linux
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Install libgirepository-1.0 for latest Ubuntu image
+        run: |
+          echo "libgirepository-1.0" > dependencies
+          sudo apt-get update
+          sudo apt install -y libgirepository1.0-dev
+      
+      - name: Install OpenMPI
+        run: |
+          echo "openmpi-bin libopenmpi-dev" >> dependencies
+          sudo apt-get update
+          sudo apt-get install -y openmpi-bin libopenmpi-dev
+          mpirun --version | head -n1 > openmpi-version.txt
+          cat openmpi-version.txt
+
+      - name: Upload OpenMPI version artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: openmpi-version
+          path: openmpi-version.txt
+
+      - name: Set up Miniconda
+        uses: conda-incubator/setup-miniconda@v3
+        with:
+          auto-update-conda: true
+          activate-environment: elise
+          environment-file: env_linx64.yml
+          use-mamba: false
+
+      - name: Show Python and Conda Info
+        run: |
+          conda info
+          conda list
+          python --version
+        
+      - name: Create distributable using Pyinstaller
+        run: |
+          conda run -n elise pyinstaller elise-linx64.spec
+      
+      - name: Archive distributable
+        run: |
+          tar cvzf elise-linx64.tar.gz -C dist elise/
+      
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: elise-linx64
+          path: elise-linx64.tar.gz

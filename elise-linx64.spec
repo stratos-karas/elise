@@ -1,12 +1,16 @@
 # -*- mode: python ; coding: utf-8 -*-
 
+import os
+conda_path = str(os.environ["CONDA_PREFIX"])
+print(conda_path)
+
 entry_a = Analysis(
-    ['framework\\elise.py'],
+    ['framework/elise.py'],
     pathex=['.', 'framework/realsim'],
     binaries=[],
     datas=[
-        ('C:\\Users\\stratos\\anaconda3\\envs\\elise\\Lib\\site-packages\\dash_extensions\\package-info.json', 'dash_extensions'),
-        ('C:\\Users\\stratos\\anaconda3\\envs\\elise\\Lib\\site-packages\\dash_extensions\\dash_extensions.js', 'dash_extensions'),
+        (f"{conda_path}/lib/python3.13/site-packages/dash_extensions/package-info.json", 'dash_extensions'),
+        (f"{conda_path}/lib/python3.13/site-packages/dash_extensions/dash_extensions.js", 'dash_extensions'),
         ('api/loader/*.py', 'api/loader'),
         ('framework/batch/*.py', 'batch'),
         ('framework/common/*.py', 'common'),
@@ -126,15 +130,10 @@ ws_server_a = Analysis(
     optimize=0,
 )
   
-MERGE((entry_a, 'elise', 'elise'), (run_mpi_a, 'run_mpi', 'run_mpi'), (run_mp_a, 'run_mp', 'run_mp'), (progress_server_a, 'progress_server', 'progress_server'), (ws_server_a, 'ws_server', 'ws_server'))
-
 entry_pyz = PYZ(entry_a.pure)
 entry_exe = EXE(
     entry_pyz,
     entry_a.scripts,
-    entry_a.binaries,
-    entry_a.zipfiles,
-    entry_a.datas,
     [],
     exclude_binaries=True,
     name='elise',
@@ -142,21 +141,19 @@ entry_exe = EXE(
     bootloader_ignore_signals=False,
     strip=False,
     upx=True,
-    console=False,
+    console=True,
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon="assets/promo/elise-marker.ico"
+    icon="assets/promo/elise-marker.ico",
 )
 
 run_mpi_pyz = PYZ(run_mpi_a.pure)
 run_mpi_exe = EXE(
     run_mpi_pyz,
     run_mpi_a.scripts,
-    run_mpi_a.binaries,
-    run_mpi_a.datas,
     [],
     exclude_binaries=True,
     name='run_mpi',
@@ -165,7 +162,6 @@ run_mpi_exe = EXE(
     strip=False,
     upx=True,
     upx_exclude=[],
-    runtime_tmpdir=None,
     console=False,
     disable_windowed_traceback=False,
     argv_emulation=False,
@@ -178,8 +174,6 @@ run_mp_pyz = PYZ(run_mp_a.pure)
 run_mp_exe = EXE(
     run_mp_pyz,
     run_mp_a.scripts,
-    run_mp_a.binaries,
-    run_mp_a.datas,
     [],
     exclude_binaries=True,
     name='run_mp',
@@ -188,7 +182,6 @@ run_mp_exe = EXE(
     strip=False,
     upx=True,
     upx_exclude=[],
-    runtime_tmpdir=None,
     console=False,
     disable_windowed_traceback=False,
     argv_emulation=False,
@@ -201,8 +194,6 @@ progress_server_pyz = PYZ(progress_server_a.pure)
 progress_server_exe = EXE(
     progress_server_pyz,
     progress_server_a.scripts,
-    progress_server_a.binaries,
-    progress_server_a.datas,
     [],
     exclude_binaries=True,
     name='progress_server',
@@ -211,21 +202,19 @@ progress_server_exe = EXE(
     strip=False,
     upx=True,
     upx_exclude=[],
-    runtime_tmpdir=None,
     console=False,
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
+    onefile=False
 )
 
 ws_server_pyz = PYZ(ws_server_a.pure)
 ws_server_exe = EXE(
     ws_server_pyz,
     ws_server_a.scripts,
-    ws_server_a.binaries,
-    ws_server_a.datas,
     [],
     exclude_binaries=True,
     name='ws_server',
@@ -234,25 +223,38 @@ ws_server_exe = EXE(
     strip=False,
     upx=True,
     upx_exclude=[],
-    runtime_tmpdir=None,
     console=False,
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
+    onefile=False
 )
 
 coll = COLLECT(
     entry_exe, 
-    run_mpi_exe,
-    run_mp_exe,
-    progress_server_exe,
-    ws_server_exe,
     entry_a.binaries, 
     entry_a.zipfiles, 
     entry_a.datas, 
+    run_mpi_exe,
+    run_mpi_a.binaries, 
+    run_mpi_a.zipfiles, 
+    run_mpi_a.datas, 
+    run_mp_exe,
+    run_mp_a.binaries, 
+    run_mp_a.zipfiles, 
+    run_mp_a.datas, 
+    progress_server_exe,
+    progress_server_a.binaries, 
+    progress_server_a.zipfiles, 
+    progress_server_a.datas, 
+    ws_server_exe,
+    ws_server_a.binaries, 
+    ws_server_a.zipfiles, 
+    ws_server_a.datas, 
     strip=False, 
     upx=True, 
-    name='elise'
+    upx_exclude=[],
+    name='elise',
 )
