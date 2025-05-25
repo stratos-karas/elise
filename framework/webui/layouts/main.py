@@ -77,7 +77,7 @@ schematic_ctn = dbc.Stack([schematic_header, schematic_components_ctn])
 main_actions_components = [
     dbc.InputGroup([
         dbc.InputGroupText("Provider", style={"width": "30%"}),
-        dbc.Select(["Open MPI", "Intel MPI", "Python"], "MPI", id="main-action-multiprocessing-provider")
+        dbc.Select(["Open MPI", "Intel MPI", "Python"], "Open MPI", id="main-action-multiprocessing-provider")
     ], style={"width": "100%"}),
     # dbc.Button("Export schematic", style={"width": "100%"}),
     # dbc.Button("Expand schematic", style={"width": "100%"}),
