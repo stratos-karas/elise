@@ -6,12 +6,15 @@
 
 # **Efficient Lightweight Scheduling Estimator (ELiSE)**
 
-<!-- https://discord.com/channels/1357408607741804805/1357408607741804808 -->
 ## Description
 
 ELiSE is a framework for fast prototyping and evaluation of scheduling and co-scheduling algorithms in HPC systems. 
 The main focus is to be a simple, fast, small and easily extensible tool. ELiSE is also flexible providing a graphical interface,
 a web interface and a command line interface.
+
+## Demo
+
+https://github.com/user-attachments/assets/ffcaafbe-0f6c-450b-959f-066b9f82170f
 
 ## Usage
 
