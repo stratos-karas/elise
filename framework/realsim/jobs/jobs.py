@@ -51,10 +51,10 @@ class Job:
         self.socket_conf = tuple()
 
         # Time resources
-        self.remaining_time = remaining_time if remaining_time > 0 else 0.1
-        self.submit_time = submit_time if submit_time > 0 else 0.1
+        self.remaining_time = remaining_time if remaining_time > 0 else 0
+        self.submit_time = submit_time if submit_time > 0 else 0
         self.waiting_time = waiting_time
-        self.wall_time = wall_time if wall_time > 0 else 0.1
+        self.wall_time = wall_time if wall_time > 0 else 0
         self.start_time: float = -1.0
         self.finish_time: float = -1.0
 

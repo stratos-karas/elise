@@ -1,17 +1,18 @@
 import argparse
-from batch_utils import BatchCreator
 from math import ceil
 from multiprocessing import cpu_count
 import os
+from pathlib import Path
 import socket
 import subprocess
 import sys
 
-sys.path.append(os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "..")
-))
+ELiSE_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+sys.path.append(ELiSE_ROOT)
 
-from common.utils import define_logger
+from batch.batch_utils import BatchCreator
+from common.utils import define_logger, is_bundled, process_name, get_executable
+
 logger = define_logger()
 
 def local_or_hpc_env() -> int:
@@ -65,7 +66,7 @@ def calculate_for_less_avail_cores(sim_configs_num: int, avail_cores: int) -> tu
 
     return total_procs, batch_size
 
-def spawn_progress_server(server_ipaddr: str, server_port: int, connections: int, export_reports: bool) -> subprocess.Popen:
+def spawn_progress_server(server_ipaddr: str, server_port: int, connections: int, export_reports: str, webui: bool) -> subprocess.Popen:
     """
     Starts a progress server process.
 
@@ -84,20 +85,34 @@ def spawn_progress_server(server_ipaddr: str, server_port: int, connections: int
         >>> sim_progress_proc = spawn_progress_server(server_ipaddr, server_port, connections)
     """
     logger.debug(f"Starting progress server process")
+    
+    # Get path for Progress Server
+    root_path = Path(ELiSE_ROOT)
+    if is_bundled():
+        progress_server_path = root_path.parent / process_name("progress_server")
+    else:
+        progress_server_path = root_path / "batch" / process_name("progress_server")
+    exe = get_executable(progress_server_path)
 
     # Create a command to run the "progress_server.py" script, passing in the required arguments
-    server_prog_cmd = ["python", "progress_server.py", "--server_ipaddr", server_ipaddr, "--server_port", str(server_port), "--connections", str(connections)]
+    server_prog_cmd = exe + ["--server_ipaddr", server_ipaddr, "--server_port", str(server_port), "--connections", str(connections)]
     
     # If export_reports is True, add an argument to export reports
     if export_reports:
-        server_prog_cmd.append("--export_reports")
+        server_prog_cmd.extend(["--export_reports", export_reports])
 
+    # If running from WebUI then redirect all communication there
+    if webui:
+        server_prog_cmd.append("--webui")
+    
+    logger.debug(f"Progress server cmdline: {' '.join(server_prog_cmd)}")
+    
     # Run the command as a subprocess
     sim_progress_proc = subprocess.Popen(server_prog_cmd, env=os.environ.copy())
 
     return sim_progress_proc
 
-def spawn_simulation_runs(schematic_file: str, provider: str, server_ipaddr: str, server_port: int, sim_configs_num: int) -> subprocess.Popen:
+def spawn_simulation_runs(schematic_file: str, provider: str, server_ipaddr: str, server_port: int, sim_configs_num: int, webui: bool) -> subprocess.Popen:
     """
     Spawn multiple simulation runs in parallel on localhost and optionally to remote machines using MPI.
 
@@ -133,13 +148,47 @@ def spawn_simulation_runs(schematic_file: str, provider: str, server_ipaddr: str
     submission_cmd = list()
     if provider == "mp":
         logger.debug("Using Python's multiprocessing library as backend")
-        submission_cmd = ["python", "run_mp.py", schematic_file, str(total_procs), str(batch_size), server_ipaddr, str(server_port)]
+        # Get path for running with multiprocessing library
+        root_path = Path(ELiSE_ROOT)
+        if is_bundled():
+            run_mp_path = root_path.parent / process_name("run_mp")
+        else:
+            run_mp_path = root_path / "batch" / process_name("run_mp")
+        exe = get_executable(run_mp_path)
+        submission_cmd = exe + [schematic_file, str(total_procs), str(batch_size), server_ipaddr, str(server_port)]
 
-    elif provider == "mpi":
-        logger.debug("Using MPI as backend")
-        submission_cmd = ["mpirun", "--bind-to", "none", "--oversubscribe", "-np", str(total_procs), "python", "run_mpi.py", schematic_file, str(batch_size), server_ipaddr, str(server_port)]
+    elif provider == "openmpi":
+        logger.debug("Using OpenMPI as backend")
+        # Get path for running with MPI library
+        root_path = Path(ELiSE_ROOT)
+        if is_bundled():
+            run_mpi_path = root_path.parent / process_name("run_mpi")
+        else:
+            run_mpi_path = root_path / "batch" / process_name("run_mpi")
+        exe = get_executable(run_mpi_path)
+        submission_cmd = ["mpirun", "--bind-to", "none", "--oversubscribe", "-np", str(total_procs)] + exe + [schematic_file, str(batch_size), server_ipaddr, str(server_port)]
 
-    logger.debug(f"Submission command: {' '.join(submission_cmd)}")
+    elif provider == "intelmpi":
+        logger.debug("Using IntelMPI as backend")
+
+        # Get path for running with MPI library
+        root_path = Path(ELiSE_ROOT)
+        if is_bundled():
+            run_mpi_path = root_path.parent / process_name("run_mpi")
+        else:
+            run_mpi_path = root_path / "batch" / process_name("run_mpi")
+        exe = get_executable(run_mpi_path)
+        # Intel MPI supports oversubscription by default
+        # Not defining a bind policy places the threads randomly
+        submission_cmd = ["mpiexec", "-np", str(total_procs)] + exe + [schematic_file, str(batch_size), server_ipaddr, str(server_port)]
+    
+    # Handle WebUI
+    if webui:
+        submission_cmd.append("1")
+    else:
+        submission_cmd.append("0")
+
+    logger.debug(f"Submission cmdline: {' '.join(submission_cmd)}")
 
     logger.debug(f"Starting the simulation runs")
 
@@ -147,8 +196,7 @@ def spawn_simulation_runs(schematic_file: str, provider: str, server_ipaddr: str
     
     return sim_run_proc
 
-
-if __name__ == "__main__":
+def execute_simulation(cmdargs=None):
     """
     Submit multiple simulation runs in the localhost or in an HPC environment given a schematic file and the vendor as input.
 
@@ -157,17 +205,23 @@ if __name__ == "__main__":
     """
 
     # Current supported providers. Might need to specify different MPI vendors (OpenMPI, IntelMPI)
-    supported_providers = ["mpi", "mp"]
+    supported_providers = ["openmpi", "intelmpi", "mp"]
 
     parser = argparse.ArgumentParser(description="Provide a schematic file and a parallelizing provider to run simulations")
     parser.add_argument("-f", "--schematic-file", help="Provide a schematic file name", required=True)
     parser.add_argument("-p", "--provider", choices=supported_providers, default="mp", help="Define the provider for parallelizing tasks")
-    parser.add_argument("--export_reports", default=False, action="store_true")
-    args = parser.parse_args()
+    parser.add_argument("--export_reports", default="", type=str, help="Provde a directory to export reports for each scheduler")
+    parser.add_argument("--webui", default=False, action="store_true")
+
+    if cmdargs is not None:
+        args = parser.parse_args(cmdargs)
+    else:
+        args = parser.parse_args()
 
     schematic_file = args.schematic_file
     provider = args.provider
     export_reports = args.export_reports
+    webui = args.webui
 
     # Calculate the number of needed cores to run all the simulations in parallel
     batch_creator = BatchCreator(schematic_file)
@@ -180,10 +234,10 @@ if __name__ == "__main__":
     server_ipaddr, server_port = socket.gethostbyname(socket.gethostname()), 54321
 
     # We first spawn the progress server to listen for connections
-    sim_progress_proc = spawn_progress_server(server_ipaddr, server_port, sim_configs_num, export_reports)
+    sim_progress_proc = spawn_progress_server(server_ipaddr, server_port, sim_configs_num, export_reports, webui)
 
     # And then spawn the simulation runs
-    sim_run_proc = spawn_simulation_runs(schematic_file, provider, server_ipaddr, server_port, sim_configs_num)
+    sim_run_proc = spawn_simulation_runs(schematic_file, provider, server_ipaddr, server_port, sim_configs_num, webui)
 
     # We first wait for the simulation runs to finish
     sim_run_proc.wait()
@@ -192,3 +246,7 @@ if __name__ == "__main__":
     # And then for the progress server
     sim_progress_proc.wait()
     logger.debug(f"The progress server closed gracefully")
+    
+
+if __name__ == "__main__":
+    execute_simulation()

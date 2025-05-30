@@ -222,9 +222,17 @@ class Logger(object):
         )
 
     def get_jobs_throughput(self):
+        num_of_jobs: list[int] = list()
+        for check in sorted(list(self.cluster_events["checkpoints"])):
+            jobs_in_check = 0
+            for _, jevt in self.job_events.items():
+                if jevt["finish time"] <= check:
+                    jobs_in_check += 1
+            num_of_jobs.append(jobs_in_check)
+
         return (
                 sorted(list(self.cluster_events["checkpoints"])),
-                self.cluster_events["finished jobs"]
+                num_of_jobs
         )
 
     def get_unused_cores_graph(self):
@@ -272,7 +280,9 @@ class Logger(object):
         jcolors = colors.sample_colorscale(self.scale, [n/(num_of_jobs - 1) for n in range(num_of_jobs)])
 
         frames = []
-        for check in sorted(list(self.cluster_events["checkpoints"])):
+        checkpoints = sorted(list(self.cluster_events["checkpoints"]))
+
+        for check in checkpoints:
 
             cluster_flat = [-100] * (num_of_hosts * ppn)
             jobnames_flat = [""] * (num_of_hosts * ppn)
@@ -313,7 +323,7 @@ class Logger(object):
                             text=cluster_text,
                             hovertemplate="Job: %{text}<br>%{x}<br>%{y}<extra></extra>"
                         )
-                    ])
+                    ], name=str(check)) #, name=f"frame{i}")
             )
 
         fig = go.Figure(
@@ -339,10 +349,65 @@ class Logger(object):
                         tickvals=core_ticks,
                         ticktext=core_ticknames
                     ),
-                    updatemenus=[dict(
-                        type="buttons",
-                        buttons=[dict(label="Play", method="animate", args=[None])]
-                    )]
+                    updatemenus=[{
+                        "buttons": [
+                            {
+                                "args": [
+                                    None, 
+                                    {
+                                        "frame": {"duration": 500, "redraw": True},
+                                        "fromcurrent": True,
+                                        "transition": {"duration": 300}
+                                    }
+                                ],
+                                "label": "Play",
+                                "method": "animate"
+                            },
+                            {
+                                "args": [
+                                    [None],
+                                    {
+                                        "frame": {"duration": 0, "redraw": True},
+                                        "mode": "immediate",
+                                        "transition": {"duration": 0}
+                                    }
+                                ],
+                                "label": "Pause",
+                                "method": "animate"
+                            }
+                        ],
+                        "direction": "left",
+                        'pad': {'r': 10, 't': 87},
+                        "showactive": False,
+                        "type": "buttons",
+                        "x": 0.04,
+                        "xanchor": "center",
+                        "y": 0.029,
+                        "yanchor": "top"
+                    }],
+                    sliders=[{
+                        'active': 0,
+                        'yanchor': 'top',
+                        'xanchor': 'left',
+                        'currentvalue': {
+                            'prefix': 'Time:',
+                            'visible': True,
+                            'xanchor': 'right'
+                        },
+                        'transition': {'duration': 300, 'easing': 'cubic-in-out'},
+                        'pad': {'b': 10},
+                        'len': 0.9,
+                        'x': 0.1,
+                        'y': -0.01,
+                        'steps': [{
+                            'args': [
+                                [str(t)],
+                                {'frame': {'duration': 0, 'redraw': True}, 'mode': 'immediate', 'transition': {'duration': 0}}
+                            ],
+                            'label': str(t),
+                            'method': 'animate'
+                        } for t in checkpoints]
+                    }]
                 ),
                 frames=frames
         )

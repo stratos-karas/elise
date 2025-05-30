@@ -52,11 +52,18 @@ class ComputeEngine:
 
         # Sort jobs by their time they will be appearing in the waiting queue
         self.db.preloaded_queue.sort(key=lambda job: job.submit_time)
+        
+        # Get the submit time of the first job and subtract it from the other jobs
+        # We are shifting them to start = 0
+        first_submit_time = self.db.preloaded_queue[0].submit_time
 
         # Preload jobs and calculate their respective half and full node cores
         # usage
         for job in self.db.preloaded_queue:
 
+            # Shift the job by first_submit_time amount
+            job.submit_time -= first_submit_time
+            
             # Set job id
             job.job_id = self.cluster.id_counter
 
@@ -141,6 +148,10 @@ class ComputeEngine:
         # Important flags
         neighbors_exist = False
         spread_allocation = not (job.socket_conf == self.cluster.socket_conf)
+        
+        if not spread_allocation:
+            # It is executing as compact
+            return
 
         for hostname in job.assigned_hosts:
             for co_job_signature in list(self.cluster.hosts[hostname].jobs.keys()):
@@ -269,12 +280,11 @@ class ComputeEngine:
         # at least in the beginning of a simulation)
 
         # Recalculate the remaining time of jobs
-        for job in self.cluster.execution_list:
-            self.calculate_job_rem_time(job)
 
         # Find the minimum remaining execution time of the jobs currently executing
         min_rem_time = inf
         for job in self.cluster.execution_list:
+            self.calculate_job_rem_time(job)
             if job.remaining_time < min_rem_time:
                 min_rem_time = job.remaining_time
 
@@ -284,6 +294,9 @@ class ComputeEngine:
             showup_time = job.submit_time - self.cluster.makespan
             if showup_time > 0 and showup_time < min_rem_time:
                 min_rem_time = showup_time
+            else:
+                # They are already sorted by increasing arrival time
+                break
         
         if min_rem_time <= 0:
             self.debug_logger.error(f"The minimum next simulation step time is {min_rem_time} <=0")
@@ -355,9 +368,9 @@ class ComputeEngine:
                 deployed |= self.scheduler.backfill()
 
         # If deployed restart scheduling procedure
-        if deployed:
-            self.debug_logger.debug("End of a simulation step")
-            return
+        # if deployed:
+        #     self.debug_logger.debug("End of a simulation step")
+        #     return
 
         # If the scheduler didn't deploy jobs then
         # 1. the cluster's execution list is full

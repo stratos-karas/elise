@@ -7,7 +7,7 @@ sys.path.append(os.path.abspath(os.path.join(
 
 from realsim.jobs.jobs import Job
 from realsim.jobs.utils import deepcopy_list
-from realsim.scheduler.coschedulers.ranks.random import RandomRanksCoscheduler
+from realsim.scheduler.coschedulers.ranks.randomranks import RandomRanksCoscheduler
 from realsim.cluster.host import Host
 
 
