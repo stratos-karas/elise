@@ -16,7 +16,7 @@ a web interface and a command line interface.
 
 https://github.com/user-attachments/assets/ffcaafbe-0f6c-450b-959f-066b9f82170f
 
-## 📚 ELiSE Materials
+## 📚 ELiSE Material
 
 * 🎞️ Presentation
 [📂 View the Slides](./material/ELiSE_%20A%20tool%20to%20support%20algorithmic%20design%20for%20HPC%20co-scheduling.pdf)
