@@ -16,6 +16,25 @@ a web interface and a command line interface.
 
 https://github.com/user-attachments/assets/ffcaafbe-0f6c-450b-959f-066b9f82170f
 
+## 📚 ELiSE Materials
+
+* 🎞️ Presentation
+[📂 View the Slides](./material/ELiSE_%20A%20tool%20to%20support%20algorithmic%20design%20for%20HPC%20co-scheduling.pdf)
+
+
+* 📝 JSSPP 2025
+[📂 View the Paper](./material/JSSPP_2025_paper_11.pdf)
+
+
+## 💬 Join Us on Discord
+[![Join us on Discord](https://img.shields.io/badge/Join%20us%20on%20Discord-5865F2?style=for-the-badge&logo=discord&logoColor=white)](https://discord.gg/cABwcWhBSx)
+
+Stay connected with the ELiSE:
+- Join our community!
+- Get notified about new commits, bug fixes, and releases
+- Ask questions and get support from the community
+
+
 ## Usage
 
 ### GUI
