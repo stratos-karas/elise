@@ -9,8 +9,8 @@ entry_a = Analysis(
     pathex=['.', 'framework/realsim'],
     binaries=[],
     datas=[
-        (f"{conda_path}/lib/python3.13/site-packages/dash_extensions/package-info.json", 'dash_extensions'),
-        (f"{conda_path}/lib/python3.13/site-packages/dash_extensions/dash_extensions.js", 'dash_extensions'),
+        (f"{conda_path}/lib/python3.12/site-packages/dash_extensions/package-info.json", 'dash_extensions'),
+        (f"{conda_path}/lib/python3.12/site-packages/dash_extensions/dash_extensions.js", 'dash_extensions'),
         ('api/loader/*.py', 'api/loader'),
         ('framework/batch/*.py', 'batch'),
         ('framework/common/*.py', 'common'),
